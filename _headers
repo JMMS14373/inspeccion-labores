@@ -1,0 +1,2 @@
+/*
+  Content-Security-Policy: default-src 'self' 'unsafe-inline' 'unsafe-eval' https://script.google.com https://drive.google.com https://cdnjs.cloudflare.com data: blob:
