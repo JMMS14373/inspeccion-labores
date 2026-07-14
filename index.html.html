@@ -1,0 +1,2027 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Inspeccion de Labores</title>
+<!-- SheetJS cargado de forma diferida solo cuando hay internet - si no, exporta CSV -->
+<style>
+:root{--c-bg:#0f1923;--c-surface:#1a2733;--c-card:#1e2f3e;--c-border:#2a3f52;--c-accent:#f5a623;--c-accent2:#e8533a;--c-ok:#27ae60;--c-no:#e74c3c;--c-na:#7f8c8d;--c-text:#e8ecef;--c-muted:#8a9ab0;--c-section:#243444;--r:8px;--r-sm:5px;--font:'Segoe UI',system-ui,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-size:14px;min-height:100vh}
+.app-header{background:linear-gradient(135deg,#1a2733 0%,#0f1923 100%);border-bottom:2px solid var(--c-accent);padding:12px 16px;position:sticky;top:0;z-index:100}
+.app-header h1{font-size:13px;font-weight:700;color:var(--c-accent);letter-spacing:.5px;text-transform:uppercase}
+.app-header p{font-size:11px;color:var(--c-muted);margin-top:2px}
+.header-row{display:flex;align-items:center;justify-content:space-between}
+.badge{background:var(--c-accent);color:#000;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px}
+.tabs{display:flex;background:var(--c-surface);border-bottom:1px solid var(--c-border);overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:0 0 auto;padding:10px 14px;font-size:12px;font-weight:600;color:var(--c-muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+.tab.active{color:var(--c-accent);border-bottom-color:var(--c-accent)}
+.view{display:none;padding:14px}.view.active{display:block}
+.form-header{background:var(--c-card);border-radius:var(--r);padding:14px;margin-bottom:14px;border:1px solid var(--c-border)}
+.form-title{font-size:12px;font-weight:700;color:var(--c-accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px}
+.maestro-tag{font-size:9px;font-weight:600;background:var(--c-section);color:var(--c-muted);padding:2px 8px;border-radius:20px;border:1px solid var(--c-border)}
+.maestro-tag.updated{color:var(--c-ok);border-color:var(--c-ok);background:#1a3a2a}
+.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.field{display:flex;flex-direction:column;gap:4px}.field.full{grid-column:1/-1}
+.field label{font-size:10px;font-weight:600;color:var(--c-muted);text-transform:uppercase;letter-spacing:.4px;display:flex;align-items:center;gap:5px}
+.lbl-m{font-size:9px;color:var(--c-accent);font-weight:700;background:#2a1f05;padding:1px 5px;border-radius:10px}
+.lbl-s{font-size:9px;color:#4fc3f7;font-weight:700;background:#051a2a;padding:1px 5px;border-radius:10px}
+.select-wrap{position:relative}
+.select-wrap::after{content:'\25BE';position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--c-muted);pointer-events:none;font-size:12px}
+.field select,.field input[type=date]{background:var(--c-bg);border:1px solid var(--c-border);border-radius:var(--r-sm);color:var(--c-text);font-size:13px;padding:8px 10px;font-family:var(--font);outline:none;width:100%;appearance:none;-webkit-appearance:none}
+.field select:focus,.field input[type=date]:focus{border-color:var(--c-accent)}
+.labor-wrap{position:relative}
+.labor-search{width:100%;background:var(--c-bg);border:1.5px solid #4fc3f7;border-radius:var(--r-sm);color:var(--c-text);font-size:13px;padding:8px 10px;font-family:var(--font);outline:none}
+.labor-search.has-val{border-color:var(--c-ok);color:var(--c-ok)}
+.labor-search::placeholder{color:var(--c-muted)}
+.labor-dd{display:none;position:absolute;z-index:300;width:100%;max-height:220px;overflow-y:auto;background:var(--c-card);border:1.5px solid #4fc3f7;border-top:none;border-radius:0 0 var(--r-sm) var(--r-sm);box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.labor-dd.open{display:block}
+.labor-opt{padding:9px 12px;font-size:12px;cursor:pointer;color:var(--c-text);border-bottom:1px solid var(--c-border);font-family:monospace}
+.labor-opt:hover,.labor-opt.sel{background:var(--c-section);color:#4fc3f7}
+.labor-hint{font-size:10px;color:var(--c-muted);margin-top:4px}
+.id-box{background:var(--c-bg);border:1.5px solid var(--c-accent);border-radius:var(--r-sm);padding:8px 12px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+.id-lbl{font-size:10px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.5px}
+.id-val{font-size:16px;font-weight:800;color:var(--c-accent);font-family:monospace}
+.sec-header{background:linear-gradient(90deg,var(--c-accent) 0%,var(--c-accent2) 100%);color:#000;font-size:11px;font-weight:800;padding:8px 12px;border-radius:var(--r-sm);margin:14px 0 8px;text-transform:uppercase;letter-spacing:.5px}
+.item-card{background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--r);margin-bottom:8px;overflow:hidden}
+.item-card.has-value{border-color:#2a5040}
+.item-desc{padding:10px 12px 6px;font-size:12px;line-height:1.4;color:var(--c-text)}
+.item-desc .num{color:var(--c-accent);font-weight:700;margin-right:4px}
+.item-controls{display:flex;gap:6px;padding:6px 12px 10px;align-items:center;flex-wrap:wrap}
+.radio-group{display:flex;gap:5px}
+.radio-btn{display:flex;align-items:center;cursor:pointer}
+.radio-btn input[type=radio]{display:none}
+.radio-lbl{padding:5px 10px;border-radius:20px;font-size:11px;font-weight:700;border:1.5px solid var(--c-border);color:var(--c-muted);cursor:pointer;white-space:nowrap}
+.radio-btn.opt-ok input:checked+.radio-lbl{background:#1a4a30;color:var(--c-ok);border-color:var(--c-ok)}
+.radio-btn.opt-no input:checked+.radio-lbl{background:#4a1a1a;color:var(--c-no);border-color:var(--c-no)}
+.radio-btn.opt-na input:checked+.radio-lbl{background:#2a2e33;color:#aaa;border-color:#555}
+.obs-field{flex:1;min-width:130px;background:var(--c-bg);border:1px solid var(--c-border);border-radius:var(--r-sm);color:var(--c-text);font-size:12px;padding:6px 8px;font-family:var(--font);outline:none}
+.obs-field:focus{border-color:var(--c-accent)}
+.photo-btn{background:var(--c-section);border:1px solid var(--c-border);border-radius:var(--r-sm);color:var(--c-muted);font-size:11px;padding:5px 9px;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:4px}
+.photo-count{background:var(--c-accent);color:#000;font-size:10px;font-weight:700;padding:1px 5px;border-radius:10px}
+.firma-section{margin-top:14px}
+.firma-block{background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--r);padding:12px;margin-bottom:12px}
+.firma-block.signed{border-color:#2a6040}
+.canvas-wrap{background:#fff;border-radius:var(--r-sm);overflow:hidden;border:2px solid var(--c-border);position:relative}
+.canvas-wrap.active-sig{border-color:var(--c-accent)}
+.sig-canvas{display:block;touch-action:none;cursor:crosshair}
+.canvas-label{font-size:11px;color:var(--c-muted);margin-bottom:6px;font-weight:600;display:flex;align-items:center;justify-content:space-between}
+.sig-status{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px}
+.sig-status.empty{background:#2a2e33;color:#666}
+.sig-status.done{background:#1a4a30;color:var(--c-ok)}
+.sig-hint{font-size:10px;color:#999;text-align:center;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;transition:opacity .2s}
+.sig-actions{display:flex;gap:8px;margin-top:6px}
+.btn-clear-sig{background:none;border:1px solid var(--c-border);color:var(--c-muted);font-size:11px;padding:5px 12px;border-radius:var(--r-sm);cursor:pointer;flex:1}
+.sig-preview{margin-top:8px;display:none}
+.sig-preview .preview-label{font-size:10px;color:var(--c-muted);margin-bottom:4px}
+.sig-preview img{width:100%;border-radius:var(--r-sm);border:1px solid var(--c-border);background:#fff}
+.btn-primary{background:var(--c-accent);color:#000;font-weight:800;font-size:14px;padding:13px;border:none;border-radius:var(--r);cursor:pointer;width:100%;text-transform:uppercase;letter-spacing:.5px;margin-top:14px}
+.btn-primary:active{opacity:.8}
+.btn-save-pdf{background:#1a3a2a;color:var(--c-ok);font-weight:800;font-size:14px;padding:13px;border:1.5px solid var(--c-ok);border-radius:var(--r);cursor:pointer;width:100%;text-transform:uppercase;letter-spacing:.5px;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-save-pdf:active{opacity:.8}
+.btn-danger{background:var(--c-accent2);color:#fff;font-weight:700;font-size:13px;padding:10px;border:none;border-radius:var(--r);cursor:pointer;width:100%;margin-top:8px}
+.record-card{background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--r);padding:12px;margin-bottom:10px}
+.record-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.record-id{font-size:11px;font-weight:700;color:var(--c-accent)}
+.record-date{font-size:11px;color:var(--c-muted)}
+.record-meta{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+.meta-chip{background:var(--c-section);font-size:11px;padding:3px 8px;border-radius:20px;color:var(--c-muted)}
+.meta-chip span{color:var(--c-text);font-weight:600}
+.record-stats{display:flex;gap:8px;margin-bottom:10px}
+.stat{text-align:center;background:var(--c-bg);border-radius:var(--r-sm);padding:6px 10px;flex:1}
+.stat-num{font-size:18px;font-weight:800}.stat-lbl{font-size:10px;color:var(--c-muted)}
+.stat.ok .stat-num{color:var(--c-ok)}.stat.no .stat-num{color:var(--c-no)}.stat.na .stat-num{color:var(--c-na)}
+.record-actions{display:flex;gap:6px;flex-wrap:wrap}
+.btn-act{font-size:11px;font-weight:700;padding:8px 10px;border-radius:var(--r-sm);cursor:pointer;border:none}
+.btn-view{background:var(--c-section);color:var(--c-text);border:1px solid var(--c-border);flex:1;min-width:50px}
+.btn-pdf{background:#1a3a2a;color:var(--c-ok);border:1px solid #2a6040}
+.btn-xls{background:#1a2a3a;color:#4fc3f7;border:1px solid #2a5070}
+.btn-del{background:#3a1a1a;color:var(--c-no);border:1px solid #5a2020}
+.detail-overlay{display:none;position:fixed;inset:0;background:var(--c-bg);z-index:200;overflow-y:auto}
+.detail-overlay.open{display:block}
+.detail-header{background:var(--c-surface);padding:14px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:10;border-bottom:1px solid var(--c-border)}
+.btn-back{background:none;border:none;color:var(--c-accent);font-size:20px;cursor:pointer;padding:0 4px}
+.detail-title{font-size:13px;font-weight:700;color:var(--c-text);flex:1}
+.detail-body{padding:14px}
+.detail-item{display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--c-border);gap:8px}
+.detail-item-desc{font-size:12px;color:var(--c-text);flex:1;line-height:1.4}
+.detail-item-status{font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap}
+.status-ok{background:#1a4a30;color:var(--c-ok)}.status-no{background:#4a1a1a;color:var(--c-no)}.status-na{background:#2a2e33;color:#aaa}
+.detail-obs{font-size:11px;color:var(--c-muted);margin-top:3px;font-style:italic}
+.photo-thumb{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.photo-thumb img{width:54px;height:54px;object-fit:cover;border-radius:4px;border:1px solid var(--c-border)}
+.export-row{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.exp-pdf{flex:1;background:#1a3a2a;color:var(--c-ok);border:1.5px solid var(--c-ok);font-size:13px;font-weight:700;padding:10px;border-radius:var(--r);cursor:pointer}
+.exp-xls{flex:1;background:#1a2a3a;color:#4fc3f7;border:1.5px solid #4fc3f7;font-size:13px;font-weight:700;padding:10px;border-radius:var(--r);cursor:pointer}
+.config-card{background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--r);padding:14px;margin-bottom:14px}
+.config-title{font-size:12px;font-weight:700;color:var(--c-accent);text-transform:uppercase;margin-bottom:8px}
+.drop-zone{border:2px dashed var(--c-border);border-radius:var(--r);padding:24px;text-align:center;margin:10px 0;cursor:pointer}
+.drop-icon{font-size:32px;margin-bottom:8px}
+.drop-text{font-size:12px;color:var(--c-muted)}
+.btn-import{background:var(--c-accent);color:#000;font-size:12px;font-weight:700;padding:8px 16px;border:none;border-radius:var(--r-sm);cursor:pointer;margin-top:8px}
+.import-status{font-size:11px;text-align:center;margin-top:8px;min-height:16px}
+.labor-list-item{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:4px;margin-bottom:3px}
+.labor-list-item:nth-child(odd){background:var(--c-section)}
+.labor-num{font-size:10px;color:var(--c-muted);min-width:24px}
+.labor-code{font-size:12px;color:#4fc3f7;font-family:monospace}
+.empty{text-align:center;padding:40px 20px;color:var(--c-muted)}
+.empty-icon{font-size:40px;margin-bottom:12px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:#27ae60;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:999;transition:transform .3s;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,.4)}
+.toast.show{transform:translateX(-50%) translateY(0)}.toast.error{background:var(--c-accent2)}
+.counter-bar{display:flex;gap:8px;padding:10px 14px;background:var(--c-surface);border-bottom:1px solid var(--c-border)}
+.counter{flex:1;text-align:center}.counter-n{font-size:16px;font-weight:800}.counter-l{font-size:10px;color:var(--c-muted)}
+.c-ok{color:var(--c-ok)}.c-no{color:var(--c-no)}.c-na{color:var(--c-na)}.c-pending{color:var(--c-accent)}
+.loading-overlay{display:none;position:fixed;inset:0;background:rgba(15,25,35,.88);z-index:500;align-items:center;justify-content:center;flex-direction:column;gap:14px}
+.loading-overlay.show{display:flex}
+.spinner{width:40px;height:40px;border:4px solid var(--c-border);border-top-color:var(--c-accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-txt{color:var(--c-text);font-size:13px;font-weight:600}
+.setup-overlay{display:none;position:fixed;inset:0;background:rgba(15,25,35,.95);z-index:600;align-items:center;justify-content:center;padding:20px}
+.setup-overlay.show{display:flex}
+.setup-card{background:var(--c-card);border:1px solid var(--c-accent);border-radius:var(--r);padding:24px 20px;max-width:380px;text-align:center}
+.setup-icon{font-size:40px;margin-bottom:12px}
+.setup-card h2{font-size:15px;color:var(--c-accent);margin-bottom:10px}
+.setup-card p{font-size:12px;color:var(--c-muted);line-height:1.6;margin-bottom:14px;text-align:left}
+.setup-card code{background:var(--c-bg);padding:2px 6px;border-radius:4px;color:#4fc3f7;font-family:monospace}
+.btn-setup{background:var(--c-accent);color:#000;font-weight:700;font-size:13px;padding:10px 20px;border:none;border-radius:var(--r-sm);cursor:pointer;width:100%}
+</style>
+
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#F5A623">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Inspeccion">
+<script>
+if("serviceWorker" in navigator){
+  window.addEventListener("load", function(){
+    navigator.serviceWorker.register("/sw.js")
+      .then(function(reg){ console.log("SW OK"); })
+      .catch(function(err){ console.log("SW error:", err); });
+  });
+}
+</script>
+</head>
+<body>
+<div class="setup-overlay" id="setupOverlay">
+  <div class="setup-card">
+    <div class="setup-icon">&#128193;</div>
+    <h2>Carpeta de Trabajo Offline</h2>
+    <p>
+      Esta aplicacion guarda todos los registros, fotos y firmas directamente en el almacenamiento de tu dispositivo.<br><br>
+      Para mantener todo organizado, te recomendamos:<br><br>
+      1. Crea una carpeta llamada <code>InspeccionLabores</code> en tu dispositivo (Descargas o Documentos)<br>
+      2. Guarda este archivo HTML dentro de esa carpeta<br>
+      3. Todos los PDF y Excel que generes, guardalos tambien ahi<br><br>
+      Una vez configurado, la app funciona <b style="color:#4fc3f7">100% sin conexion a internet</b>.
+    </p>
+    <button class="btn-setup" onclick="closeSetup()">Entendido, continuar</button>
+  </div>
+</div>
+
+<div class="app-header">
+  <div class="header-row">
+    <div>
+      <h1>Inspeccion de Labores</h1>
+      <p>Inspector de Proyectos</p>
+    </div>
+    <span class="badge" id="recordCount">0 reg.</span>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('form')">Nuevo</div>
+  <div class="tab" onclick="switchTab('records')">Guardados</div>
+  <div class="tab" onclick="switchTab('config')">Maestro</div>
+</div>
+
+<div class="counter-bar" id="counterBar">
+  <div class="counter"><div class="counter-n c-ok" id="cnt-ok">0</div><div class="counter-l">CUMPLE</div></div>
+  <div class="counter"><div class="counter-n c-no" id="cnt-no">0</div><div class="counter-l">NO CUMPLE</div></div>
+  <div class="counter"><div class="counter-n c-na" id="cnt-na">0</div><div class="counter-l">N/A</div></div>
+  <div class="counter"><div class="counter-n c-pending" id="cnt-pending">0</div><div class="counter-l">PENDIENTE</div></div>
+</div>
+
+<div class="view active" id="view-form">
+  <div class="form-header">
+    <div class="form-title">
+      Datos Generales
+      <span class="maestro-tag" id="maestroTag">Maestro original</span>
+    </div>
+
+    <div class="id-box">
+      <span class="id-lbl">ID Registro</span>
+      <span class="id-val" id="displayID">---</span>
+    </div>
+
+    <div class="field-grid">
+      <div class="field">
+        <label>Fecha</label>
+        <input type="date" id="f-fecha" onchange="generateID()">
+      </div>
+      <div class="field">
+        <label>Turno</label>
+        <div class="select-wrap">
+          <select id="f-turno">
+            <option value="">-- Turno --</option>
+            <option value="Dia">Dia</option>
+            <option value="Noche">Noche</option>
+          </select>
+        </div>
+      </div>
+      <div class="field full">
+        <label>Inspector <span class="lbl-m">MAESTRO</span></label>
+        <div class="select-wrap">
+          <select id="f-inspector">
+        <option value="">-- Inspector --</option>
+        <option value="Cindy Paola Muñoz Cifuentes">Cindy Paola Muñoz Cifuentes</option>
+        <option value="Lizeth Johana Hernandez Oliveros">Lizeth Johana Hernandez Oliveros</option>
+        <option value="Andrea Rosas">Andrea Rosas</option>
+        <option value="Camilo Arias">Camilo Arias</option>
+        <option value="Abel Silva">Abel Silva</option>
+        <option value="Jenesis Llanos">Jenesis Llanos</option>
+          </select>
+        </div>
+      </div>
+      <div class="field full">
+        <label>Contratista <span class="lbl-m">MAESTRO</span></label>
+        <div class="select-wrap">
+          <select id="f-contratista" onchange="onContratistaChange(this.value)">
+        <option value="">-- Contratista --</option>
+        <option value="HONGDA LIAN SHAO">HONGDA LIAN SHAO</option>
+        <option value="JIN SHAN ANDES">JIN SHAN ANDES</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Guardia <span class="lbl-m">MAESTRO</span></label>
+        <div class="select-wrap">
+          <select id="f-guardia">
+        <option value="">-- Guardia --</option>
+        <option value="A">A</option>
+        <option value="B">B</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Lider Turno <span class="lbl-m">MAESTRO</span></label>
+        <div class="select-wrap">
+          <select id="f-lider">
+        <option value="">-- Lider de Turno --</option>
+        <optgroup label="-- JIN SHAN ANDES --">
+        <option value="Kebin Estiben Florez Vargas">Kebin Estiben Florez Vargas</option>
+        <option value="Clemente Piña Moreno">Clemente Piña Moreno</option>
+        <option value="Wilmer Andrés Londoño Basilio">Wilmer Andrés Londoño Basilio</option>
+        <option value="Henry Arley Ramírez Mejía">Henry Arley Ramírez Mejía</option>
+        <option value="Edwin Arturo Zuluaga Salazar">Edwin Arturo Zuluaga Salazar</option>
+        <option value="Juan David López Díaz">Juan David López Díaz</option>
+        <option value="Fabian Monsalve">Fabian Monsalve</option>
+        </optgroup>
+        <optgroup label="-- HONGDA LIAN SHAO --">
+        <option value="Luis Gómez">Luis Gómez</option>
+        <option value="Deider Pérez">Deider Pérez</option>
+        <option value="Sebastian Gallego">Sebastian Gallego</option>
+        <option value="Cristian Duarte">Cristian Duarte</option>
+        <option value="Juan Hidalgo">Juan Hidalgo</option>
+        <option value="Guillermo Obregon">Guillermo Obregon</option>
+        <option value="Oscar Quiroz">Oscar Quiroz</option>
+        <option value="Weimar Garcia">Weimar Garcia</option>
+        <option value="Luis Garcia">Luis Garcia</option>
+        </optgroup>
+          </select>
+        </div>
+      </div>
+      <div class="field full">
+        <label>Actividad <span class="lbl-m">MAESTRO</span></label>
+        <div class="select-wrap">
+          <select id="f-actividad">
+        <option value="">-- Actividad --</option>
+        <option value="Balastreo">Balastreo</option>
+        <option value="Bombeo auxiliar">Bombeo auxiliar</option>
+        <option value="Calafateo">Calafateo</option>
+        <option value="Cargue de explosivo">Cargue de explosivo</option>
+        <option value="Cartografía">Cartografía</option>
+        <option value="Control de pasivos">Control de pasivos</option>
+        <option value="Desabombe">Desabombe</option>
+        <option value="Deslode">Deslode</option>
+        <option value="Desquinche">Desquinche</option>
+        <option value="Emboquille">Emboquille</option>
+        <option value="Ensanche">Ensanche</option>
+        <option value="Instalación autoperforantes">Instalación autoperforantes</option>
+        <option value="Instalación cableado eléctrico">Instalación cableado eléctrico</option>
+        <option value="Instalación cinta strap">Instalación cinta strap</option>
+        <option value="Instalación de anclas de servicios">Instalación de anclas de servicios</option>
+        <option value="Instalación tuberia">Instalación tuberia</option>
+        <option value="Instalación ventilador">Instalación ventilador</option>
+        <option value="Inyección de pernos">Inyección de pernos</option>
+        <option value="Lanzado frente de avance">Lanzado frente de avance</option>
+        <option value="Lanzado intersección">Lanzado intersección</option>
+        <option value="Lanzado pasivos">Lanzado pasivos</option>
+        <option value="Levantamiento topográfico">Levantamiento topográfico</option>
+        <option value="Limpieza de estéril">Limpieza de estéril</option>
+        <option value="Limpieza de mineral">Limpieza de mineral</option>
+        <option value="Limpieza de pata">Limpieza de pata</option>
+        <option value="Muestreo geológico">Muestreo geológico</option>
+        <option value="Perforación Camara">Perforación Camara</option>
+        <option value="Perforación Crucero">Perforación Crucero</option>
+        <option value="Perforación Despate">Perforación Despate</option>
+        <option value="Perforación Food Wall">Perforación Food Wall</option>
+        <option value="Perforación Galería">Perforación Galería</option>
+        <option value="Perforación Jackleg">Perforación Jackleg</option>
+        <option value="Perforación Rampa">Perforación Rampa</option>
+        <option value="Perforación Realce">Perforación Realce</option>
+        <option value="Perforación nicho">Perforación nicho</option>
+        <option value="Predril">Predril</option>
+        <option value="Reperforación">Reperforación</option>
+        <option value="Sin actividad">Sin actividad</option>
+        <option value="Soporte">Soporte</option>
+        <option value="Soporte Tipo II">Soporte Tipo II</option>
+        <option value="Soporte Tipo IV">Soporte Tipo IV</option>
+        <option value="Soporte Tipo V">Soporte Tipo V</option>
+        <option value="Soporte tipo I">Soporte tipo I</option>
+        <option value="SoporteTipo III">SoporteTipo III</option>
+        <option value="Vaceado de losa">Vaceado de losa</option>
+        <option value="Ventilación">Ventilación</option>
+          </select>
+        </div>
+      </div>
+      <div class="field full">
+        <label>Labor <span class="lbl-s">SEMANAL</span></label>
+        <div class="labor-wrap">
+          <input class="labor-search" id="laborSearch" type="text"
+            placeholder="Selecciona primero la Contratista..."
+            autocomplete="off" oninput="filterLabor()"
+            onfocus="openLaborDD()" onblur="closeLaborDD()"
+            disabled>
+          <div class="labor-dd" id="laborDD"></div>
+        </div>
+        <div class="labor-hint" id="laborHint">Sin seleccion - toca para buscar</div>
+        <input type="hidden" id="f-labor">
+      </div>
+    </div>
+  </div>
+
+  <div id="checklistContainer"></div>
+
+  <div class="firma-section">
+    <div class="sec-header">Responsables</div>
+
+    <div class="firma-block" id="blk-sigInspector">
+      <div class="canvas-label">
+        <span>Firma Inspector</span>
+        <span class="sig-status empty" id="st-sigInspector">Sin firma</span>
+      </div>
+      <div class="canvas-wrap" id="wrap-sigInspector">
+        <canvas id="sigInspector"></canvas>
+        <div class="sig-hint" id="hint-sigInspector">Dibuje su firma aqui</div>
+      </div>
+      <div class="sig-actions">
+        <button class="btn-clear-sig" onclick="clearSig('sigInspector')">Limpiar firma</button>
+      </div>
+      <div class="sig-preview" id="prev-sigInspector">
+        <div class="preview-label">Vista previa capturada:</div>
+        <img id="prevImg-sigInspector" src="" alt="Firma inspector">
+      </div>
+    </div>
+
+    <div class="firma-block" id="blk-sigLider">
+      <div class="canvas-label">
+        <span>Firma Lider de Turno</span>
+        <span class="sig-status empty" id="st-sigLider">Sin firma</span>
+      </div>
+      <div class="canvas-wrap" id="wrap-sigLider">
+        <canvas id="sigLider"></canvas>
+        <div class="sig-hint" id="hint-sigLider">Dibuje su firma aqui</div>
+      </div>
+      <div class="sig-actions">
+        <button class="btn-clear-sig" onclick="clearSig('sigLider')">Limpiar firma</button>
+      </div>
+      <div class="sig-preview" id="prev-sigLider">
+        <div class="preview-label">Vista previa capturada:</div>
+        <img id="prevImg-sigLider" src="" alt="Firma lider">
+      </div>
+    </div>
+  </div>
+
+  <button class="btn-primary" onclick="saveRecord()">GUARDAR REGISTRO</button>
+  <button class="btn-save-pdf" onclick="saveAndDownloadPDF()">GUARDAR Y DESCARGAR PDF</button>
+  <button class="btn-danger" onclick="resetForm()">Limpiar Formulario</button>
+</div>
+
+<div class="view" id="view-records">
+  <button class="btn-xls btn-act" style="width:100%;margin-bottom:12px;padding:11px;font-size:13px;border-radius:var(--r)"
+    onclick="exportAllXLS()">Exportar TODOS a Excel</button>
+  <div id="recordsList"></div>
+</div>
+
+<div class="view" id="view-config">
+  <div class="config-card">
+    <div class="config-title">Actualizar Maestro Semanal</div>
+    <p style="font-size:12px;color:var(--c-muted);line-height:1.6;margin-bottom:4px">
+      Cada semana el administrador sube el nuevo Excel maestro.<br>
+      Solo se actualiza la lista de <span style="color:#4fc3f7;font-weight:700">Labor</span> (columna Q).<br>
+      Los demas campos se mantienen del maestro original.
+    </p>
+    <div class="drop-zone" onclick="document.getElementById('maestroInput').click()">
+      <div class="drop-icon">&#128194;</div>
+      <div class="drop-text">Toca para seleccionar el archivo .xlsx actualizado</div>
+      <button class="btn-import">Seleccionar archivo</button>
+    </div>
+    <input type="file" id="maestroInput" accept=".xlsx,.xls" style="display:none" onchange="importMaestro(this)">
+    <div class="import-status" id="importStatus"></div>
+  </div>
+
+  <div class="config-card">
+    <div class="config-title">Carpeta de Trabajo</div>
+    <p style="font-size:12px;color:var(--c-muted);line-height:1.6">
+      Guarda este archivo y todos los PDF/Excel generados en una carpeta llamada
+      <code style="background:var(--c-bg);padding:2px 6px;border-radius:4px;color:#4fc3f7">InspeccionLabores</code>
+      en tu dispositivo para mantener todo organizado y disponible sin conexion.
+    </p>
+  </div>
+
+  <div class="config-card">
+    <div class="config-title" style="display:flex;align-items:center;justify-content:space-between">
+      <span>Labores vigentes</span>
+      <span id="laborCount" style="font-size:11px;color:var(--c-muted);font-weight:400"></span>
+    </div>
+    <div id="laborListPreview" style="max-height:350px;overflow-y:auto;margin-top:8px"></div>
+  </div>
+</div>
+
+<div class="detail-overlay" id="detailOverlay">
+  <div class="detail-header">
+    <button class="btn-back" onclick="closeDetail()">&#8592;</button>
+    <div class="detail-title" id="detailTitle">Detalle del Registro</div>
+  </div>
+  <div class="detail-body" id="detailBody"></div>
+</div>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-txt" id="loadingTxt">Generando...</div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+var MAESTRO = {
+  actividades: ["Balastreo", "Bombeo auxiliar", "Calafateo", "Cargue de explosivo", "Cartografía", "Control de pasivos", "Desabombe", "Deslode", "Desquinche", "Emboquille", "Ensanche", "Instalación autoperforantes", "Instalación cableado eléctrico", "Instalación cinta strap", "Instalación de anclas de servicios", "Instalación tuberia", "Instalación ventilador", "Inyección de pernos", "Lanzado frente de avance", "Lanzado intersección", "Lanzado pasivos", "Levantamiento topográfico", "Limpieza de estéril", "Limpieza de mineral", "Limpieza de pata", "Muestreo geológico", "Perforación Camara", "Perforación Crucero", "Perforación Despate", "Perforación Food Wall", "Perforación Galería", "Perforación Jackleg", "Perforación Rampa", "Perforación Realce", "Perforación nicho", "Predril", "Reperforación", "Sin actividad", "Soporte", "Soporte Tipo II", "Soporte Tipo IV", "Soporte Tipo V", "Soporte tipo I", "SoporteTipo III", "Vaceado de losa", "Ventilación"],
+  inspectores: ["Cindy Paola Muñoz Cifuentes", "Lizeth Johana Hernandez Oliveros", "Andrea Rosas", "Camilo Arias", "Abel Silva", "Jenesis Llanos"],
+  contratistas: ["HONGDA LIAN SHAO", "JIN SHAN ANDES"],
+  guardias: ["A", "B"],
+  laboresBase: ["VS_1000_GA9400W", "VS_0926_GA9453E", "VS_0866_GA9331E", "VS_0866_GA9331W", "VS_0986_GA9420W", "VS_0966_GA9259W", "VS_0946_GA9140E", "VS_0946_GA9140W", "VS_0946_GA9194E", "VS_0946_GA9194W", "VS_0946_GA9389E", "VS_0946_GA9389W", "VS_1015_GA9392W", "VS_0986_GA9377W", "VS_0906_GA9426W", "VS_0906_GA9428E", "VS_0906_GA9428W", "YR_0926_GA9550E", "VS_0946_CX01E", "VS_0926_CM9503E", "VS_0886_RP9200W", "VS_0846_CX01E", "VS_0846_CM9380E", "VS_0836_FW9336W", "VS_0826_RP9357S", "VS_0866_CM9367S", "VS_0856_RP9408E", "VS_0846_CM9395S", "VS_0855_CM9447S", "VS_0855_CM9465S", "VS_1015_GA9408W", "VS_966_GA9259W", "VS_886_GA9217E", "VS_886_GA9217W", "VS_866_GA9331E", "VS_866_GA9331W", "VS_986_GA9420W", "VS_986_GA9377W", "VS_966_GA9335E", "VS_926_GA9453E", "VS_906_GA9124E", "VS_906_GA9426W", "YR_926_GA9550E", "VS_1015_CM9230N", "VS_946_CM9350S", "VS_946_CX01E", "VS_906_CM9365S", "VS_886_RP9200W", "VS_866_CM9367S", "VS_866_CM9368S", "VS_856_RP9408E", "VS_846_CX01E", "VS_846_CM9380E", "VS_836_FW9336W", "VS_826_RP9357S", "VS_866_CM9390W", "VS_855_CM9447S", "VS_846_CM9395S", "YR_886_CM9542S", "VS_0946_CM9350S", "VS_0906_CM9365S", "VS_0886_GA9217W", "VS_0866_CM9348E", "VS_0886_GA9217E", "VS_0986_GA9377E", "VS_0966_GA9335E", "VS_0966_GA9335W", "VS_0906_GA9124E", "YR_1016_GA9697W", "YR_0986_GA9679E", "YR_0946_GA9714W", "YR_0946_GA9712W", "YR_0906_GA9718E", "YR_0906_GA9718W", "YR_0906_GA9730E", "VS_0905_GA8975W", "VS_0885_GA8881E", "VS_0885_GA8881W", "VS_0865_GA8976E", "VS_0865_GA8976W", "VS_0905_GA8968E", "VS_0905_GA8858E", "VS_0905_GA8858W", "YR_0966_CM9554W", "YR_0886_CX00", "YR_0876_CM9660S", "YR_0876_CM9664W", "YR_0846_RP9524W", "YR_0886_FW9596W", "YR_0866_FW9715E", "YR_0906_CX00", "VS_0965_CM8940S", "VS_0905_CM8988N", "VS_0865_CM8937S", "VS_0865_CM8950W", "VS_0845_RP9478S", "VS_0865_CX00", "VS_0905_CM8798S", "VS_0885_CX00", "VS_0885_CM8853W", "YR_1016_GA9697E", "YR_1001_GA9817W", "YR_906_GA9730W", "YR_986_GA9679E", "YR_986_GA9679W", "YR_946_GA9714W", "YR_946_GA9712W", "YR_906_GA9718E", "YR_906_GA9718W", "YR_906_GA9730E", "VS_925_GA9043W", "VS_905_GA8975W", "VS_885_GA8881E", "VS_885_GA8881W", "VS_905_GA8968E", "VS_905_GA8858E", "VS_905_GA8858W", "VS_905_GA8815E", "VS_905_GA8815W", "YR_886_CX00", "YR_886_CM9580N", "YR_876_CM9660S", "YR_876_CM9664W", "YR_846_RP9524W", "YR_886_FW9596W", "YR_906_CX00", "VS_905_CX00", "VS_885_FW8853W", "VS_865_CX00", "VS_865_CM8937S", "VS_865_CM8950W", "VS_845_RP9478S", "VS_905_CM8988N", "VS_885_CX00", "YR_0906_FW9717E", "YR_0886_CM9580N", "YR_0866_RP9524W", "YR_0946_GA9714E", "YR_0986_GA9679W", "YR_0966_GA9545E", "YR_0966_GA9536E", "YR_0946_GA9729E", "VS_0925_GA9043W", "VS_0905_CX00", "VS_0885_CM8835S", "VS_0875_CM8908N", "VS_0905_GA8815E", "VS_0905_GA8815W", "VS_0906_GA9730E", "VS_0906_GA9730W", "VS_0906_GA9718E", "VS_0906_GA9718W"],
+  laboresMaestroCompleto: {"January": {"JIN SHAN ANDES": ["VS_0986_GA9421W", "VS_0966_GA9323W", "VS_0966_GA9379W", "VS_0966_GA9245W", "VS_0926_GA9453W", "VS_0906_GA9325E", "VS_0906_GA9325W", "VS_0886_GA9217E", "VS_0886_GA9217W", "VS_1000_GA9400W", "VS_0986_CM9399S", "VS_0946_CM9350S", "VS_0946_CM9299E", "VS_0946_CX01E", "VS_0906_CM9365S", "VS_0906_CM9431W", "VS_0886_CM9252N", "VS_0886_FW9262W", "VS_0886_RP9357S", "VS_0946_CM9400E", "VS_0876_CM9323N"], "HONGDA LIAN SHAO": ["YR_1000_GA9817W", "YR_0966_GA9541E", "YR_0966_GA9545E", "YR_0966_GA9536E", "YR_0946_GA9714E", "YR_0946_GA9714W", "YR_0946_GA9733E", "VS_0926_GA9453E", "VS_0925_GA9028E", "VS_0925_GA9028W", "VS_0925_GA9043E", "VS_0925_GA9043W", "VS_0905_GA8968E", "VS_0905_GA8975E", "VS_0905_GA8975W", "YR_0926_CX00", "YR_0906_CM9729N", "YR_0906_FW9717E", "YR_0906_RP9524W", "VS_0926_CM9568S", "YR_0926_CM9551S", "YR_0905_CX00", "VS_0905_CM8880W", "VS_0905_CM8885E", "VS_0885_RP9478S", "VS_0885_FW8853W", "VS_0890_CM8861N"]}, "February": {"JIN SHAN ANDES": ["VS_0966_GA9259W", "VS_0906_GA9325W", "VS_0886_GA9217E", "VS_0886_GA9217W", "VS_0986_GA9421W", "VS_0986_GA9377E", "VS_0986_GA9377W", "VS_0926_GA9453E", "VS_0906_GA9325E", "VS_1015_GA9392E", "VS_1015_GA9392W", "VS_1000_GA9400W", "VS_0986_GA9231W", "VS_0966_GA9245W", "YR_0926_GA9550E", "YR_0926_GA9550W", "YR_0926_GA9538E", "YR_0926_GA9538W", "VS_0986_CM9399S", "VS_0946_CM9350S", "VS_0946_CX01E", "VS_0906_CM9365S", "VS_0886_FW9262W", "VS_0866_CX01", "VS_0866_CM9367S", "VS_0866_CM9374W", "VS_0846_RP9357S", "VS_0946_CM9299E", "VS_0946_CM9400E", "VS_0906_CM9431W"], "HONGDA LIAN SHAO": ["YR_0966_GA9541E", "YR_0946_GA9714E", "YR_1000_GA9817W", "YR_0966_GA9545E", "YR_0966_GA9536E", "YR_0966_GA9536W", "YR_0946_GA9733E", "YR_0946_GA9714W", "YR_0946_GA9712E", "YR_0946_GA9712W", "VS_0925_GA9043W", "VS_0905_GA8975E", "VS_0905_GA8975W", "VS_0925_GA9028E", "VS_0925_GA9043E", "VS_0905_GA8968E", "YR_0926_CM9568S", "YR_0906_CX00", "YR_0906_FW9717E", "YR_0890_CM9619N", "YR_0886_FW9596W", "YR_0886_RP9524W", "YR_0926_FW9596W", "YR_0906_CM9729N", "VS_0905_CX00", "VS_0905_CM8890N", "VS_0885_FW8853W", "VS_0885_CM8835S", "VS_0865_RP9478S", "VS_0905_CM8880W", "VS_0885_CX00", "VS_0885_CM8844N"]}, "March": {"JIN SHAN ANDES": ["VS_0966_GA9259W", "VS_0946_CM9350S", "VS_0946_CX01E", "VS_0906_CM9365S", "VS_0906_GA9325W", "VS_0886_GA9217E", "VS_0886_GA9217W", "VS_0866_CX01", "VS_0866_CM9367S", "VS_0866_CM9374W", "VS_0846_RP9357S", "VS_1015_GA9392E", "VS_1015_GA9392W", "VS_0986_GA9377E", "VS_0986_GA9377W", "VS_0966_GA9335E", "VS_0946_CM9400E", "VS_0906_CM9346E", "VS_0906_GA9325E", "VS_0906_CM9431W", "VS_1000_GA9400E", "VS_1000_GA9400W", "VS_0986_GA9421W", "VS_0966_GA9323W", "VS_0966_GA9245W", "VS_0966_GA9335W", "VS_0926_GA9453E", "YR_0926_GA9550E", "YR_0926_GA9550W"], "HONGDA LIAN SHAO": ["YR_0906_CX00", "YR_0890_CM9619N", "YR_0886_FW9596W", "YR_0886_RP9524W", "YR_0986_GA9679E", "YR_0986_GA9679W", "YR_0946_GA9714E", "YR_0946_GA9714W", "YR_1001_GA9817W", "YR_0966_GA9545E", "YR_0966_GA9541E", "YR_0966_GA9536E", "YR_0946_GA9712E", "YR_0946_GA9712W", "YR_0946_GA9729E", "VS_0925_GA9043W", "VS_0905_CX00", "VS_0905_GA8975E", "VS_0905_GA8975W", "VS_0905_CM8840W", "VS_0885_FW8853W", "VS_0885_CM8835S", "VS_0865_RP9478S", "VS_0925_GA9028E", "VS_0905_GA8968E", "VS_0885_CX00", "VS_0885_CM8844N"]}, "April": {"JIN SHAN ANDES": ["VS_0966_GA9259W", "VS_0946_CM9350S", "VS_0946_CX01E", "VS_0906_CM9365S", "VS_0906_GA9325W", "VS_0886_FW9262W", "VS_0886_GA9217E", "VS_0886_GA9217W", "VS_0866_CX01E", "VS_0866_CM9349E", "VS_0866_CM9367S", "VS_0866_CM9374W", "VS_0846_RP9357S", "VS_0856_RP9408E", "VS_1015_GA9392E", "VS_1015_GA9392W", "VS_0986_GA9377E", "VS_0986_GA9377W", "VS_0966_GA9335E", "VS_0946_CM9400E", "VS_0906_CM9346E", "VS_0906_GA9325E", "VS_0906_CM9431W", "VS_1000_GA9400E", "VS_1000_GA9400W", "VS_0986_GA9421W", "VS_0966_GA9323W", "VS_0966_GA9245W", "VS_0966_GA9335W", "VS_0926_GA9453E", "YR_0926_GA9550E", "YR_0926_GA9550W"], "HONGDA LIAN SHAO": ["YR_0906_CX00", "YR_0890_CM9619N", "YR_0886_FW9596W", "YR_0886_RP9524W", "YR_0986_GA9679E", "YR_0986_GA9679W", "YR_0946_GA9714E", "YR_0946_GA9714W", "YR_1016_GA9697E", "YR_1016_GA9697W", "YR_1001_GA9817W", "YR_0966_GA9545E", "YR_0966_GA9541E", "YR_0966_GA9536E", "YR_0946_GA9712E", "YR_0946_GA9712W", "YR_0946_GA9729E", "VS_0925_GA9043W", "VS_0905_CX00", "VS_0905_GA8975E", "VS_0905_GA8975W", "VS_0905_CM8840W", "VS_0885_FW8853W", "VS_0885_CM8835S", "VS_0865_RP9478S", "VS_0925_GA9028E", "VS_0905_GA8968E", "VS_0885_CX00", "VS_0885_CM8844N"]}, "May": {"JIN SHAN ANDES": ["VS_0946_CM9350S", "VS_0946_CX01E", "VS_0906_CM9365S", "VS_0886_GA9217W", "VS_0886_RP9200W", "VS_0866_CM9348E", "VS_0866_CM9367S", "VS_0856_RP9408E", "VS_0846_CX01E", "VS_0846_CM9395S", "VS_0826_RP9357S", "VS_1015_GA9408W", "VS_0886_GA9217E", "VS_0866_GA9331W", "VS_1015_GA9392W", "VS_1000_GA9400W", "VS_0986_GA9377E", "VS_0986_GA9377W", "VS_0986_GA9420W", "VS_0966_GA9335E", "VS_0966_GA9335W", "VS_0926_GA9453E", "VS_0906_GA9124E", "VS_0866_GA9331E", "YR_0926_GA9550E"], "HONGDA LIAN SHAO": ["YR_0906_CX00", "YR_0906_FW9717E", "YR_0886_FW9596W", "YR_0886_CM9580N", "YR_0876_CM9660S", "YR_0866_RP9524W", "YR_0946_GA9714E", "YR_1016_GA9697W", "YR_1001_GA9817W", "YR_0986_GA9679E", "YR_0986_GA9679W", "YR_0966_GA9545E", "YR_0966_GA9536E", "YR_0946_GA9714W", "YR_0946_GA9729E", "VS_0925_GA9043W", "VS_0905_CX00", "VS_0905_CM8988N", "VS_0885_CM8835S", "VS_0885_CX00", "VS_0885_GA8881E", "VS_0885_GA8881W", "VS_0875_CM8908N", "VS_0865_CX00", "VS_0865_CM8937S", "VS_0845_RP9478S", "VS_0905_GA8968E", "VS_0905_GA8975W", "VS_0905_GA8815E", "VS_0905_GA8815W", "VS_0905_GA8858E", "VS_0905_GA8858W", "VS_0906_GA9730E", "VS_0906_GA9730W", "VS_0906_GA9718E", "VS_0906_GA9718W", "YR_1016_GA9697E"]}, "June": {"JIN SHAN ANDES": ["VS_1015_GA9408W", "VS_1000_GA9400W", "VS_966_GA9259W", "VS_886_GA9217E", "VS_886_GA9217W", "VS_866_GA9331E", "VS_866_GA9331W", "VS_986_GA9420W", "VS_1015_GA9392W", "VS_986_GA9377W", "VS_966_GA9335E", "VS_926_GA9453E", "VS_906_GA9124E", "VS_906_GA9426W", "YR_926_GA9550E", "VS_1015_CM9230N", "VS_946_CM9350S", "VS_946_CX01E", "VS_906_CM9365S", "VS_886_RP9200W", "VS_866_CM9367S", "VS_866_CM9368S", "VS_856_RP9408E", "VS_846_CX01E", "VS_846_CM9380E", "VS_836_FW9336W", "VS_826_RP9357S", "VS_866_CM9390W", "VS_855_CM9447S", "VS_846_CM9395S", "YR_886_CM9542S"], "HONGDA LIAN SHAO": ["YR_1016_GA9697E", "YR_1001_GA9817W", "YR_906_GA9730W", "YR_1016_GA9697W", "YR_986_GA9679E", "YR_986_GA9679W", "YR_946_GA9714W", "YR_946_GA9712W", "YR_906_GA9718E", "YR_906_GA9718W", "YR_906_GA9730E", "VS_925_GA9043W", "VS_905_GA8975W", "VS_885_GA8881E", "VS_885_GA8881W", "VS_905_GA8968E", "VS_905_GA8858E", "VS_905_GA8858W", "VS_905_GA8815E", "VS_905_GA8815W", "YR_886_CX00", "YR_886_CM9580N", "YR_876_CM9660S", "YR_876_CM9664W", "YR_846_RP9524W", "YR_886_FW9596W", "YR_906_CX00", "VS_905_CX00", "VS_885_FW8853W", "VS_865_CX00", "VS_865_CM8937S", "VS_865_CM8950W", "VS_845_RP9478S", "VS_905_CM8988N", "VS_885_CX00"]}, "July": {"JIN SHAN ANDES": ["VS_1000_GA9400W", "VS_0926_GA9453E", "VS_0866_GA9331E", "VS_0866_GA9331W", "VS_0986_GA9420W", "VS_0966_GA9259W", "VS_0946_GA9140E", "VS_0946_GA9140W", "VS_0946_GA9194E", "VS_0946_GA9194W", "VS_0946_GA9389E", "VS_0946_GA9389W", "VS_1015_GA9392W", "VS_0986_GA9377W", "VS_0906_GA9426W", "VS_0906_GA9428E", "VS_0906_GA9428W", "YR_0926_GA9550E", "VS_0946_CX01E", "VS_0926_CM9503E", "VS_0886_RP9200W", "VS_0846_CX01E", "VS_0846_CM9380E", "VS_0836_FW9336W", "VS_0826_RP9357S", "VS_0866_CM9367S", "VS_0856_RP9408E", "VS_0846_CM9395S", "VS_0855_CM9447S", "VS_0855_CM9465S"], "HONGDA LIAN SHAO": ["YR_1016_GA9697W", "YR_0986_GA9679E", "YR_0946_GA9714W", "YR_0946_GA9712W", "YR_0906_GA9718E", "YR_0906_GA9718W", "YR_0906_GA9730E", "VS_0905_GA8975W", "VS_0885_GA8881E", "VS_0885_GA8881W", "VS_0865_GA8976E", "VS_0865_GA8976W", "VS_0905_GA8968E", "VS_0905_GA8858E", "VS_0905_GA8858W", "YR_0966_CM9554W", "YR_0886_CX00", "YR_0876_CM9660S", "YR_0876_CM9664W", "YR_0846_RP9524W", "YR_0886_FW9596W", "YR_0866_FW9715E", "YR_0906_CX00", "VS_0965_CM8940S", "VS_0905_CM8988N", "VS_0865_CM8937S", "VS_0865_CM8950W", "VS_0845_RP9478S", "VS_0865_CX00", "VS_0905_CM8798S", "VS_0885_CX00", "VS_0885_CM8853W"]}},
+  laboresPorContratista: {
+    "JIN SHAN ANDES": ["VS_1000_GA9400W", "VS_0926_GA9453E", "VS_0866_GA9331E", "VS_0866_GA9331W", "VS_0986_GA9420W", "VS_0966_GA9259W", "VS_0946_GA9140E", "VS_0946_GA9140W", "VS_0946_GA9194E", "VS_0946_GA9194W", "VS_0946_GA9389E", "VS_0946_GA9389W", "VS_1015_GA9392W", "VS_0986_GA9377W", "VS_0906_GA9426W", "VS_0906_GA9428E", "VS_0906_GA9428W", "YR_0926_GA9550E", "VS_0946_CX01E", "VS_0926_CM9503E", "VS_0886_RP9200W", "VS_0846_CX01E", "VS_0846_CM9380E", "VS_0836_FW9336W", "VS_0826_RP9357S", "VS_0866_CM9367S", "VS_0856_RP9408E", "VS_0846_CM9395S", "VS_0855_CM9447S", "VS_0855_CM9465S", "VS_1015_GA9408W", "VS_966_GA9259W", "VS_886_GA9217E", "VS_886_GA9217W", "VS_866_GA9331E", "VS_866_GA9331W", "VS_986_GA9420W", "VS_986_GA9377W", "VS_966_GA9335E", "VS_926_GA9453E", "VS_906_GA9124E", "VS_906_GA9426W", "YR_926_GA9550E", "VS_1015_CM9230N", "VS_946_CM9350S", "VS_946_CX01E", "VS_906_CM9365S", "VS_886_RP9200W", "VS_866_CM9367S", "VS_866_CM9368S", "VS_856_RP9408E", "VS_846_CX01E", "VS_846_CM9380E", "VS_836_FW9336W", "VS_826_RP9357S", "VS_866_CM9390W", "VS_855_CM9447S", "VS_846_CM9395S", "YR_886_CM9542S", "VS_0946_CM9350S", "VS_0906_CM9365S", "VS_0886_GA9217W", "VS_0866_CM9348E", "VS_0886_GA9217E", "VS_0986_GA9377E", "VS_0966_GA9335E", "VS_0966_GA9335W", "VS_0906_GA9124E"],
+    "HONGDA LIAN SHAO": ["YR_1016_GA9697W", "YR_0986_GA9679E", "YR_0946_GA9714W", "YR_0946_GA9712W", "YR_0906_GA9718E", "YR_0906_GA9718W", "YR_0906_GA9730E", "VS_0905_GA8975W", "VS_0885_GA8881E", "VS_0885_GA8881W", "VS_0865_GA8976E", "VS_0865_GA8976W", "VS_0905_GA8968E", "VS_0905_GA8858E", "VS_0905_GA8858W", "YR_0966_CM9554W", "YR_0886_CX00", "YR_0876_CM9660S", "YR_0876_CM9664W", "YR_0846_RP9524W", "YR_0886_FW9596W", "YR_0866_FW9715E", "YR_0906_CX00", "VS_0965_CM8940S", "VS_0905_CM8988N", "VS_0865_CM8937S", "VS_0865_CM8950W", "VS_0845_RP9478S", "VS_0865_CX00", "VS_0905_CM8798S", "VS_0885_CX00", "VS_0885_CM8853W", "YR_1016_GA9697E", "YR_1001_GA9817W", "YR_906_GA9730W", "YR_986_GA9679E", "YR_986_GA9679W", "YR_946_GA9714W", "YR_946_GA9712W", "YR_906_GA9718E", "YR_906_GA9718W", "YR_906_GA9730E", "VS_925_GA9043W", "VS_905_GA8975W", "VS_885_GA8881E", "VS_885_GA8881W", "VS_905_GA8968E", "VS_905_GA8858E", "VS_905_GA8858W", "VS_905_GA8815E", "VS_905_GA8815W", "YR_886_CX00", "YR_886_CM9580N", "YR_876_CM9660S", "YR_876_CM9664W", "YR_846_RP9524W", "YR_886_FW9596W", "YR_906_CX00", "VS_905_CX00", "VS_885_FW8853W", "VS_865_CX00", "VS_865_CM8937S", "VS_865_CM8950W", "VS_845_RP9478S", "VS_905_CM8988N", "VS_885_CX00", "YR_0906_FW9717E", "YR_0886_CM9580N", "YR_0866_RP9524W", "YR_0946_GA9714E", "YR_0986_GA9679W", "YR_0966_GA9545E", "YR_0966_GA9536E", "YR_0946_GA9729E", "VS_0925_GA9043W", "VS_0905_CX00", "VS_0885_CM8835S", "VS_0875_CM8908N", "VS_0905_GA8815E", "VS_0905_GA8815W", "VS_0906_GA9730E", "VS_0906_GA9730W", "VS_0906_GA9718E", "VS_0906_GA9718W"]
+  }
+};
+
+var SECTIONS = [
+  {id:"sec1",num:"1",title:"SECCION",items:[
+    "Medidas seccion labor evaluada",
+    "Estado de la gradiente (marcada y actualizada)",
+    "Estado de la via (nivelado, sobretamanos, empozamiento de agua)",
+    "Estado de la cuneta (limpia, voladura o martillo percutor)",
+    "Estado zona de interseccion (rampa con crucero / crucero con galerias)"
+  ]},
+  {id:"sec2",num:"2",title:"SOSTENIMIENTO",items:[
+    "Tipo de soporte: Tipo I, II, III, IV, V",
+    "N de mallas y/o pernos, altura nivel linea de soporte, traslape y ajuste",
+    "Espesor capa de concreto y uso de calibradores",
+    "Estado soporte instalado (concreto agrietado, mallas deterioradas, areas sin soporte)",
+    "Estacion de desabombe (distancia al frente, senalizada, patron barras)",
+    "Soportes especiales (autoperforantes, pernos inyectados, cintas straps)",
+    "Estado soporte zonas especiales (ensanches, nichos, desquinches, pozas)",
+    "Reporte condiciones criticas (estallido de roca)"
+  ]},
+  {id:"sec3",num:"3",title:"SERVICIOS",items:[
+    "Estado linea de agua (calibre, diametro, uniones, fugas, dist. 30m, antilatigo, verde)",
+    "Estado linea de aire comprimido (calibre, diametro, uniones, fugas, dist. 30m, azul)",
+    "Estado linea de bombeo y drenaje (calibre, diametro, empalmes, fugas)",
+    "Estado instalacion ductos de ventilacion (rampa principal, guaya, doble linea)",
+    "Estado soporte de los servicios (rampa: platinas dobles y/o triples)",
+    "Estado soporte instalacion electrica (cable voladura, comunicacion, baja y media)",
+    "Estado carcamos tipo A y B (senalizacion, iluminacion, deslode, bomba, pasarela)",
+    "Estado bombeo auxiliar (senalizacion, soporte linea, distancia frente, fugas)"
+  ]},
+  {id:"sec4",num:"4",title:"VENTILACION",items:[
+    "Tablero de gases (se encuentra actualizado)",
+    "Atmosfera minera: O2 19.5-23.5%, CO menor 25ppm, CO2 menor 1000ppm, NO2 menor 1ppm, CH4 menor 1%",
+    "Estado ductos de ventilacion (dist. 30m, diametro, fugas, empalmes, doble ducto rampas)",
+    "Estado de ventiladores (vibracion, ruidos anomalos)",
+    "Sensacion termica (alta o normal)"
+  ]},
+  {id:"sec5",num:"5",title:"ELECTRICOS",items:[
+    "Numero de nichos en la labor",
+    "Seccion del nicho (ancho A=3m, altura H=2m, profundidad P=1.5m)",
+    "Distancia del ultimo nicho hasta el tope",
+    "Estandar del nicho (orden, aseo, soporte, humedad, piso losa, iluminacion, extintor)",
+    "Extensiones electricas (PROHIBIDO - reportar uso)",
+    "Linea energia electrica (dist. 30m max, sin golpes, sin anadiduras, sin agua)",
+    "Ganchos servicios electricos (espaciados c/3m, bien instalados)",
+    "Senal de radio y estado cable Leeke feeder",
+    "Estado del amplificador (anomalias)"
+  ]}
+];
+
+var formData = {};
+var photos = {};
+
+function onContratistaChange(val){
+  document.getElementById("f-labor").value = "";
+  var inp = document.getElementById("laborSearch");
+  var dd  = document.getElementById("laborDD");
+  if(inp) inp.value = "";
+  if(dd){ dd.innerHTML = ""; dd.classList.remove("open"); }
+  if(!val){
+    if(inp){ inp.disabled=true; inp.style.opacity="0.5"; inp.placeholder="Selecciona primero la Contratista..."; }
+    return;
+  }
+  var labores = MAESTRO.laboresPorContratista[val] || [];
+  if(inp){ inp.disabled=false; inp.style.opacity="1"; inp.placeholder="Buscar labor "+val.split(" ")[0]+"... ("+labores.length+" labores Jul-Jun-May)"; }
+}
+
+function getLabores(){
+  try{
+    var s = JSON.parse(localStorage.getItem("maestroLabores") || "null");
+    return s || MAESTRO.laboresBase;
+  }catch(e){ return MAESTRO.laboresBase; }
+}
+function getMaestroMeta(){
+  try{ return JSON.parse(localStorage.getItem("maestroMeta") || "null"); }
+  catch(e){ return null; }
+}
+
+var laborBlurTimer = null;
+function getUltimos3Meses(){
+  return ['July','June','May'];
+}
+
+function getLaboresByContratista(){
+  var cont = document.getElementById("f-contratista").value;
+  if(!cont) return getLabores();
+  var lista = MAESTRO.laboresPorContratista[cont] || [];
+  return lista;
+}
+
+function filterLabor(){
+  var cont = document.getElementById("f-contratista").value;
+  if(!cont) return; // Sin contratista no filtrar
+  var q = document.getElementById("laborSearch").value.toLowerCase().trim();
+  var all = getLaboresByContratista();
+  var list = q ? all.filter(function(l){ return l.toLowerCase().indexOf(q) !== -1; }) : all;
+  renderLaborDD(list);
+  document.getElementById("laborDD").classList.add("open");
+}
+function renderLaborDD(list){
+  var dd = document.getElementById("laborDD");
+  var cur = document.getElementById("f-labor").value;
+  if(!list.length){
+    dd.innerHTML = "<div class=\"labor-opt\" style=\"color:var(--c-muted);cursor:default\">Sin resultados</div>";
+    return;
+  }
+  var html = "";
+  for(var i=0;i<Math.min(list.length,100);i++){
+    var l = list[i];
+    var selCls = (l===cur) ? " sel" : "";
+    html += "<div class=\"labor-opt" + selCls + "\" onmousedown=\"selectLabor(\'" + l + "\')\">" + l + "</div>";
+  }
+  dd.innerHTML = html;
+}
+function openLaborDD(){
+  clearTimeout(laborBlurTimer);
+  var cont = document.getElementById("f-contratista").value;
+  if(!cont){
+    // Sin contratista seleccionada: no abrir dropdown
+    return;
+  }
+  var labores = getLaboresByContratista();
+  renderLaborDD(labores);
+  document.getElementById("laborDD").classList.add("open");
+}
+function closeLaborDD(){
+  laborBlurTimer = setTimeout(function(){
+    document.getElementById("laborDD").classList.remove("open");
+  }, 250);
+}
+function selectLabor(val){
+  clearTimeout(laborBlurTimer);
+  document.getElementById("f-labor").value = val;
+  var inp = document.getElementById("laborSearch");
+  inp.value = val;
+  inp.classList.add("has-val");
+  var hint = document.getElementById("laborHint");
+  hint.textContent = "Seleccionado: " + val;
+  hint.style.color = "#4fc3f7";
+  document.getElementById("laborDD").classList.remove("open");
+}
+
+function importMaestro(input){
+  var file = input.files[0];
+  if(!file) return;
+  showLoading("Leyendo archivo maestro...");
+  var reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      var data = new Uint8Array(e.target.result);
+      var wb = XLSX.read(data, {type:"array"});
+      var ws = wb.Sheets[wb.SheetNames[0]];
+      var rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:""});
+      var nuevasSet = {};
+      for(var i=1;i<rows.length;i++){
+        var v = String(rows[i][16] || "").trim();
+        if(/^(VS|YR)_/.test(v)) nuevasSet[v] = true;
+      }
+      var nuevas = Object.keys(nuevasSet).sort();
+      if(!nuevas.length){
+        hideLoading();
+        showToast("No se hallaron labores VS_/YR_ en columna Q", true);
+        return;
+      }
+      localStorage.setItem("maestroLabores", JSON.stringify(nuevas));
+      var meta = {updatedAt:new Date().toISOString(), filename:file.name, count:nuevas.length};
+      localStorage.setItem("maestroMeta", JSON.stringify(meta));
+      hideLoading();
+      showToast("Maestro actualizado: " + nuevas.length + " labores");
+      updateMaestroTag();
+      renderLaborListPreview();
+      document.getElementById("laborSearch").value = "";
+      document.getElementById("laborSearch").classList.remove("has-val");
+      document.getElementById("f-labor").value = "";
+      document.getElementById("laborHint").textContent = "Sin seleccion - toca para buscar";
+      document.getElementById("laborHint").style.color = "";
+      document.getElementById("laborDD").innerHTML = "";
+    }catch(err){
+      hideLoading();
+      showToast("Error leyendo el archivo", true);
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  input.value = "";
+}
+
+function updateMaestroTag(){
+  var meta = getMaestroMeta();
+  var tag = document.getElementById("maestroTag");
+  if(meta){
+    var d = new Date(meta.updatedAt);
+    tag.textContent = "Actualizado " + d.toLocaleDateString("es-CO");
+    tag.className = "maestro-tag updated";
+  }
+}
+
+function renderLaborListPreview(){
+  var labores = getLabores();
+  var meta = getMaestroMeta();
+  document.getElementById("laborCount").textContent = labores.length + " labores";
+  var st = document.getElementById("importStatus");
+  if(meta){
+    st.innerHTML = "<span style=\"color:var(--c-ok)\">" + meta.filename + " - " + meta.count + " labores - " + new Date(meta.updatedAt).toLocaleString("es-CO") + "</span>";
+  }else{
+    st.innerHTML = "<span style=\"color:var(--c-muted)\">Usando maestro original (" + labores.length + " labores)</span>";
+  }
+  var html = "";
+  for(var i=0;i<labores.length;i++){
+    html += "<div class=\"labor-list-item\"><span class=\"labor-num\">" + (i+1) + "</span><span class=\"labor-code\">" + labores[i] + "</span></div>";
+  }
+  document.getElementById("laborListPreview").innerHTML = html;
+}
+</script>
+<script>
+// Items con campo numerico obligatorio en observacion
+// Formato: "secId_idx" : {label, unit}
+var NUMERIC_ITEMS = {
+  "sec1_0": {label:"Ej: 3.5m x 4.2m"},
+  "sec1_2": {label:"Ej: 1.5m agua empozada"},
+  "sec1_4": {label:"Ej: 4.0m x 5.0m"},
+  "sec2_1": {label:"Ej: 3 mallas / 8 pernos"},
+  "sec5_1": {label:"Ej: A=3m, H=2m, P=1.5m"},
+  "sec5_2": {label:"Ej: 18m al tope"}
+};
+
+// Items que solo muestran CUMPLE / NO CUMPLE para labores RP o CX (sec1_3 = Estado cuneta)
+var CUNETA_ONLY_RP_CX = "sec1_3";
+
+// Item con lista desplegable de tipo de soporte (sec2_0)
+var TIPO_SOPORTE_ID = "sec2_0";
+var TIPOS_SOPORTE = ["Tipo I","Tipo II","Tipo III","Tipo IV","Tipo V"];
+
+// Item con hasta 4 fotos (sec2_3 = Estado soporte instalado)
+var MAX4_FOTO_ID = "sec2_3";
+
+function isLaborRpCx(){
+  var labor = document.getElementById("f-labor").value || "";
+  return /_(RP|CX)/i.test(labor);
+}
+
+function renderChecklist(){
+  var c = document.getElementById("checklistContainer");
+  c.innerHTML = "";
+  for(var s=0;s<SECTIONS.length;s++){
+    var sec = SECTIONS[s];
+    var h = document.createElement("div");
+    h.className = "sec-header";
+    h.textContent = sec.num + ". " + sec.title;
+    c.appendChild(h);
+    for(var idx=0; idx<sec.items.length; idx++){
+      (function(sec, idx){
+        var id = sec.id + "_" + idx;
+        var card = document.createElement("div");
+        card.className = "item-card";
+        card.id = "card-" + id;
+        var es = sec.items[idx];
+        var numInfo = NUMERIC_ITEMS[id];
+        var isTipoSoporte = (id === TIPO_SOPORTE_ID);
+        var isCuneta = (id === CUNETA_ONLY_RP_CX);
+        var is4Fotos = (id === MAX4_FOTO_ID);
+
+        var cardHtml = "<div class=\"item-desc\"><span class=\"num\">" + (idx+1) + ".</span>" + es;
+        if(numInfo) cardHtml += "<span style=\"color:var(--c-accent);font-size:10px;margin-left:6px\">&#128290; Dato numerico requerido</span>";
+        if(is4Fotos) cardHtml += "<span style=\"color:var(--c-muted);font-size:10px;margin-left:6px\">(hasta 4 fotos)</span>";
+        cardHtml += "</div>";
+
+        cardHtml += "<div class=\"item-controls\"><div class=\"radio-group\">";
+        cardHtml += "<label class=\"radio-btn opt-ok\"><input type=\"radio\" name=\"" + id + "\" value=\"ok\" onchange=\"onStatus(&quot;" + id + "&quot;,&quot;ok&quot;)\"><span class=\"radio-lbl\">CUMPLE</span></label>";
+        cardHtml += "<label class=\"radio-btn opt-no\"><input type=\"radio\" name=\"" + id + "\" value=\"no\" onchange=\"onStatus(&quot;" + id + "&quot;,&quot;no&quot;)\"><span class=\"radio-lbl\">NO CUMPLE</span></label>";
+        // Cuneta: solo muestra N/A si la labor NO es RP/CX
+        if(!isCuneta){
+          cardHtml += "<label class=\"radio-btn opt-na\"><input type=\"radio\" name=\"" + id + "\" value=\"na\" onchange=\"onStatus(&quot;" + id + "&quot;,&quot;na&quot;)\"><span class=\"radio-lbl\">N/A</span></label>";
+        } else {
+          // Si es cuneta, mostrar N/A solo cuando labor no es RP/CX
+          if(!isLaborRpCx()){
+            cardHtml += "<label class=\"radio-btn opt-na\"><input type=\"radio\" name=\"" + id + "\" value=\"na\" onchange=\"onStatus(&quot;" + id + "&quot;,&quot;na&quot;)\"><span class=\"radio-lbl\">N/A</span></label>";
+          }
+        }
+        cardHtml += "</div>";
+
+        // Campo de observacion: numerico, lista soporte, o texto libre
+        if(isTipoSoporte){
+          // Lista desplegable tipo de soporte
+          cardHtml += "<select class=\"obs-field\" id=\"obs-" + id + "\" onchange=\"onObs(&quot;" + id + "&quot;,this.value)\" style=\"max-width:160px\">";
+          cardHtml += "<option value=\"\">-- Tipo de soporte --</option>";
+          for(var t=0;t<TIPOS_SOPORTE.length;t++){
+            cardHtml += "<option value=\"" + TIPOS_SOPORTE[t] + "\">" + TIPOS_SOPORTE[t] + "</option>";
+          }
+          cardHtml += "</select>";
+        } else if(numInfo){
+          // Campo numerico con placeholder descriptivo
+          cardHtml += "<input class=\"obs-field\" type=\"text\" placeholder=\"" + numInfo.label + "\" id=\"obs-" + id + "\" oninput=\"onObs(&quot;" + id + "&quot;,this.value)\" style=\"max-width:190px\">";
+        } else {
+          cardHtml += "<input class=\"obs-field\" type=\"text\" placeholder=\"Observacion...\" id=\"obs-" + id + "\" oninput=\"onObs(&quot;" + id + "&quot;,this.value)\">";
+        }
+
+        // Boton foto con maxFotos segun el item
+        var maxF = is4Fotos ? 4 : 1;
+        cardHtml += "<button class=\"photo-btn\" onclick=\"addPhotoItem(&quot;" + id + "&quot;," + maxF + ")\">Foto <span id=\"pcount-" + id + "\" class=\"photo-count\" style=\"display:none\">0</span></button>";
+        cardHtml += "</div>";
+
+        card.innerHTML = cardHtml;
+        c.appendChild(card);
+      })(sec, idx);
+    }
+  }
+  updateCounters();
+
+  // Actualizar cuneta según labor seleccionada
+  updateCunetaVisibility();
+}
+
+function updateCunetaVisibility(){
+  // Si la labor tiene RP o CX, ocultar opcion N/A en cuneta y mostrar solo CUMPLE/NO CUMPLE
+  var cunetaCard = document.getElementById("card-" + CUNETA_ONLY_RP_CX);
+  if(!cunetaCard) return;
+  var naLabel = cunetaCard.querySelector(".opt-na");
+  if(naLabel){
+    naLabel.style.display = isLaborRpCx() ? "none" : "";
+  }
+}
+
+// Escuchar cambio de labor para actualizar cuneta
+document.addEventListener("DOMContentLoaded", function(){
+  var laborInp = document.getElementById("f-labor");
+  if(laborInp) laborInp.addEventListener("change", updateCunetaVisibility);
+  // También al seleccionar del dropdown
+  var laborSearch = document.getElementById("laborSearch");
+  if(laborSearch) laborSearch.addEventListener("input", function(){
+    setTimeout(updateCunetaVisibility, 300);
+  });
+});
+
+function onStatus(id, val){
+  if(!formData[id]) formData[id] = {status:null, obs:"", photos:[]};
+  formData[id].status = val;
+  var card = document.getElementById("card-" + id);
+  card.classList.add("has-value");
+
+  // Si es NO CUMPLE: resaltar campos obs y foto como obligatorios
+  var obsField = document.getElementById("obs-" + id);
+  var pcountEl = document.getElementById("pcount-" + id);
+  var photoBtn = card.querySelector(".photo-btn");
+
+  if(val === "no"){
+    // Marcar observacion como obligatoria
+    if(obsField){
+      obsField.placeholder = "OBLIGATORIO: Describe el hallazgo...";
+      obsField.style.border = "1.5px solid var(--c-no)";
+      obsField.style.background = "#2a1010";
+      obsField.oninput = function(){
+        onObs(id, this.value);
+        // Si ya tiene texto, vuelve a borde normal
+        if(this.value.trim().length > 0){
+          this.style.border = "1.5px solid var(--c-ok)";
+          this.style.background = "var(--c-bg)";
+        } else {
+          this.style.border = "1.5px solid var(--c-no)";
+          this.style.background = "#2a1010";
+        }
+      };
+    }
+    // Marcar foto como obligatoria
+    if(photoBtn){
+      photoBtn.style.background = "#4a1a1a";
+      photoBtn.style.borderColor = "var(--c-no)";
+      photoBtn.style.color = "var(--c-no)";
+      photoBtn.innerHTML = "FOTO OBLIGATORIA <span id=\"pcount-" + id + "\" class=\"photo-count\" style=\"display:none\">1</span>";
+    }
+    // Mostrar aviso en la tarjeta
+    if(!document.getElementById("nc-warn-" + id)){
+      var warn = document.createElement("div");
+      warn.id = "nc-warn-" + id;
+      warn.style.cssText = "background:#4a1a1a;color:var(--c-no);font-size:10px;font-weight:700;padding:4px 12px;border-top:1px solid var(--c-no)";
+      warn.textContent = "NO CUMPLE — Observacion y foto son obligatorias para guardar";
+      card.appendChild(warn);
+    }
+  } else {
+    // Si cambia a CUMPLE o N/A, restaurar campos
+    if(obsField){
+      obsField.placeholder = "Observacion...";
+      obsField.style.border = "";
+      obsField.style.background = "";
+      obsField.oninput = function(){ onObs(id, this.value); };
+    }
+    if(photoBtn){
+      photoBtn.style.background = "";
+      photoBtn.style.borderColor = "";
+      photoBtn.style.color = "";
+      photoBtn.innerHTML = "Foto <span id=\"pcount-" + id + "\" class=\"photo-count\" style=\""+(formData[id]&&formData[id].photos&&formData[id].photos.length?"":"display:none")+"\">"+((formData[id]&&formData[id].photos)?formData[id].photos.length:"0")+"</span>";
+    }
+    var oldWarn = document.getElementById("nc-warn-" + id);
+    if(oldWarn) oldWarn.remove();
+  }
+  updateCounters();
+}
+function onObs(id, val){
+  if(!formData[id]) formData[id] = {status:null, obs:"", photos:[]};
+  formData[id].obs = val;
+
+  // Regla: si sec5_2 (distancia último nicho) >= 80m
+  // → alertar en obs de sec5_0 (número de nichos) que se debe construir nicho
+  if(id === "sec5_2"){
+    var nichoAlertId = "sec5_0";
+    var obsNichoEl = document.getElementById("obs-" + nichoAlertId);
+    var ALERTA = "⚠ CONSTRUIR NICHO — distancia al tope supera 80m";
+
+    // Extraer valor numérico del texto ingresado
+    var num = parseFloat(val.replace(",", "."));
+
+    if(!isNaN(num) && num >= 80){
+      // 1. Activar alerta en observación de "Número de nichos"
+      if(obsNichoEl){
+        obsNichoEl.value = ALERTA;
+        obsNichoEl.style.border     = "1.5px solid var(--c-no)";
+        obsNichoEl.style.background = "#2a1010";
+        obsNichoEl.style.color      = "var(--c-no)";
+        obsNichoEl.style.fontWeight = "700";
+        obsNichoEl.readOnly = true;
+      }
+      // 2. Guardar obs en formData
+      if(!formData[nichoAlertId]) formData[nichoAlertId] = {status:null, obs:"", photos:[]};
+      formData[nichoAlertId].obs = ALERTA;
+
+      // 3. Marcar automáticamente como NO CUMPLE
+      formData[nichoAlertId].status = "no";
+      var radioNo = document.querySelector("input[name='" + nichoAlertId + "'][value='no']");
+      if(radioNo){
+        radioNo.checked = true;
+        var card = document.getElementById("card-" + nichoAlertId);
+        if(card) card.classList.add("has-value");
+      }
+      updateCounters();
+
+      // 4. Activar estado visual de foto obligatoria en el ítem 1
+      var cardNicho = document.getElementById("card-" + nichoAlertId);
+      if(cardNicho){
+        var photoBtn = cardNicho.querySelector(".photo-btn");
+        if(photoBtn){
+          photoBtn.style.background  = "#4a1a1a";
+          photoBtn.style.borderColor = "var(--c-no)";
+          photoBtn.style.color       = "var(--c-no)";
+          photoBtn.innerHTML = "FOTO OBLIGATORIA <span id='pcount-" + nichoAlertId + "' class='photo-count' style='display:" + (photos[nichoAlertId] && photos[nichoAlertId].length ? "inline" : "none") + "'>" + (photos[nichoAlertId] ? photos[nichoAlertId].length : 0) + "</span>";
+        }
+        // Aviso visual en tarjeta si no existe ya
+        if(!document.getElementById("nc-warn-" + nichoAlertId)){
+          var warn = document.createElement("div");
+          warn.id = "nc-warn-" + nichoAlertId;
+          warn.style.cssText = "background:#4a1a1a;color:var(--c-no);font-size:10px;font-weight:700;padding:4px 12px;border-top:1px solid var(--c-no)";
+          warn.textContent = "NO CUMPLE automatico — Distancia >= 80m: CONSTRUIR NICHO. Foto obligatoria.";
+          cardNicho.appendChild(warn);
+        }
+      }
+      // 5. Toast de aviso
+      showToast("Distancia >= 80m — N°1 marcado NO CUMPLE. Adjunta foto.", true);
+
+    } else {
+      // Si bajan de 80m o borran el valor: limpiar todo lo automático
+      if(obsNichoEl && obsNichoEl.value === ALERTA){
+        obsNichoEl.value = "";
+        obsNichoEl.style.border     = "";
+        obsNichoEl.style.background = "";
+        obsNichoEl.style.color      = "";
+        obsNichoEl.style.fontWeight = "";
+        obsNichoEl.readOnly = false;
+        if(formData[nichoAlertId]){
+          formData[nichoAlertId].obs    = "";
+          formData[nichoAlertId].status = null;
+        }
+        // Desmarcar radio NO CUMPLE
+        var radioNo = document.querySelector("input[name='" + nichoAlertId + "'][value='no']");
+        if(radioNo) radioNo.checked = false;
+        // Limpiar aviso visual
+        var oldWarn = document.getElementById("nc-warn-" + nichoAlertId);
+        if(oldWarn) oldWarn.remove();
+        // Restaurar botón foto
+        var cardNicho = document.getElementById("card-" + nichoAlertId);
+        if(cardNicho){
+          var photoBtn = cardNicho.querySelector(".photo-btn");
+          if(photoBtn){
+            photoBtn.style.background  = "";
+            photoBtn.style.borderColor = "";
+            photoBtn.style.color       = "";
+            var cnt = photos[nichoAlertId] ? photos[nichoAlertId].length : 0;
+            photoBtn.innerHTML = "Foto <span id='pcount-" + nichoAlertId + "' class='photo-count' style='display:" + (cnt ? "inline" : "none") + "'>" + cnt + "</span>";
+          }
+        }
+        updateCounters();
+      }
+    }
+  }
+}
+function updateCounters(){
+  var ok=0, no=0, na=0, p=0;
+  for(var s=0;s<SECTIONS.length;s++){
+    var sec = SECTIONS[s];
+    for(var i=0;i<sec.items.length;i++){
+      var d = formData[sec.id + "_" + i];
+      if(!d || !d.status) p++;
+      else if(d.status==="ok") ok++;
+      else if(d.status==="no") no++;
+      else na++;
+    }
+  }
+  document.getElementById("cnt-ok").textContent = ok;
+  document.getElementById("cnt-no").textContent = no;
+  document.getElementById("cnt-na").textContent = na;
+  document.getElementById("cnt-pending").textContent = p;
+}
+
+function addPhoto(id){ addPhotoItem(id, 1); }
+
+function addPhotoItem(id, maxFotos){
+  maxFotos = maxFotos || 1;
+  var actual = (photos[id] || []).length;
+  if(actual >= maxFotos){
+    showToast("Maximo " + maxFotos + " foto(s) en este campo. Borra una para reemplazarla.", true);
+    return;
+  }
+  var inp = document.createElement("input");
+  inp.type = "file";
+  inp.accept = "image/*";
+  inp.capture = "environment";
+  inp.multiple = false;
+  inp.onchange = function(){
+    var files = Array.prototype.slice.call(this.files);
+    var f = files[0]; if(!f) return;
+    (function(f){
+      var reader = new FileReader();
+      reader.onload = function(e){
+        var img = new Image();
+        img.onload = function(){
+          var canvas = document.createElement("canvas");
+          var MAX = 480;
+          var w = img.width, h = img.height;
+          if(w > MAX){ h = Math.round(h*MAX/w); w = MAX; }
+          if(h > MAX){ w = Math.round(w*MAX/h); h = MAX; }
+          canvas.width = w; canvas.height = h;
+          canvas.getContext("2d").drawImage(img,0,0,w,h);
+          var url = canvas.toDataURL("image/jpeg", 0.5);
+          if(!photos[id]) photos[id] = [];
+          photos[id].push(url);
+          if(!formData[id]) formData[id] = {status:null, obs:"", photos:[]};
+          formData[id].photos = photos[id];
+          var sp = document.getElementById("pcount-" + id);
+          sp.style.display = "inline";
+          sp.textContent = photos[id].length;
+          showToast("Foto guardada (" + photos[id].length + "/" + maxFotos + ")");
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(f);
+    })(f);
+  };
+  inp.click();
+}
+
+var sigState = {};
+function initSig(cid){
+  var cv = document.getElementById(cid);
+  var wrap = document.getElementById("wrap-" + cid);
+  if(!cv || !wrap) return;
+  var W = wrap.clientWidth || 320, H = 130, DPR = window.devicePixelRatio || 1;
+  cv.width = Math.floor(W*DPR);
+  cv.height = Math.floor(H*DPR);
+  cv.style.width = W + "px";
+  cv.style.height = H + "px";
+  cv.style.display = "block";
+  var ctx = cv.getContext("2d");
+  ctx.scale(DPR, DPR);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle = "#111111";
+  ctx.lineWidth = 2.2;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  sigState[cid] = {hasStrokes:false, ctx:ctx, W:W, H:H};
+  var drawing=false, lx=0, ly=0;
+
+  function pos(e){
+    var rc = cv.getBoundingClientRect();
+    var s = e.touches ? e.touches[0] : e;
+    return [s.clientX - rc.left, s.clientY - rc.top];
+  }
+  function start(e){
+    drawing = true;
+    var p = pos(e); lx=p[0]; ly=p[1];
+    ctx.beginPath();
+    ctx.arc(lx,ly,1.1,0,Math.PI*2);
+    ctx.fillStyle = "#111";
+    ctx.fill();
+  }
+  function move(e){
+    if(!drawing) return;
+    var p = pos(e);
+    ctx.beginPath();
+    ctx.moveTo(lx,ly);
+    ctx.lineTo(p[0],p[1]);
+    ctx.stroke();
+    lx=p[0]; ly=p[1];
+    if(!sigState[cid].hasStrokes){
+      sigState[cid].hasStrokes = true;
+      var hint = document.getElementById("hint-" + cid);
+      if(hint) hint.style.opacity = "0";
+      document.getElementById("wrap-" + cid).classList.add("active-sig");
+    }
+  }
+  function end(){
+    if(!drawing) return;
+    drawing = false;
+    if(sigState[cid].hasStrokes){
+      updateSigStatus(cid, true);
+      showSigPreview(cid);
+    }
+  }
+  cv.addEventListener("mousedown", function(e){ e.preventDefault(); start(e); });
+  cv.addEventListener("mousemove", function(e){ e.preventDefault(); move(e); });
+  cv.addEventListener("mouseup", end);
+  cv.addEventListener("mouseleave", end);
+  cv.addEventListener("touchstart", function(e){ e.preventDefault(); start(e); }, {passive:false});
+  cv.addEventListener("touchmove", function(e){ e.preventDefault(); move(e); }, {passive:false});
+  cv.addEventListener("touchend", end, {passive:false});
+}
+function updateSigStatus(cid, signed){
+  var st = document.getElementById("st-" + cid);
+  var blk = document.getElementById("blk-" + cid);
+  if(!st) return;
+  if(signed){
+    st.textContent = "Firmado";
+    st.className = "sig-status done";
+    if(blk) blk.classList.add("signed");
+  }else{
+    st.textContent = "Sin firma";
+    st.className = "sig-status empty";
+    if(blk) blk.classList.remove("signed");
+  }
+}
+function showSigPreview(cid){
+  var prev = document.getElementById("prev-" + cid);
+  var img = document.getElementById("prevImg-" + cid);
+  var cv = document.getElementById(cid);
+  if(!prev || !img || !cv) return;
+  img.src = cv.toDataURL("image/png");
+  prev.style.display = "block";
+}
+function clearSig(cid){
+  var cv = document.getElementById(cid);
+  var s = sigState[cid];
+  if(!cv || !s) return;
+  s.ctx.fillStyle = "#ffffff";
+  s.ctx.fillRect(0,0,s.W,s.H);
+  s.hasStrokes = false;
+  var hint = document.getElementById("hint-" + cid);
+  if(hint) hint.style.opacity = "1";
+  document.getElementById("wrap-" + cid).classList.remove("active-sig");
+  updateSigStatus(cid, false);
+  var prev = document.getElementById("prev-" + cid);
+  if(prev) prev.style.display = "none";
+}
+function getSigData(cid){
+  var cv = document.getElementById(cid);
+  var s = sigState[cid];
+  if(!cv || !s || !s.hasStrokes) return null;
+  return cv.toDataURL("image/png");
+}
+function isSigEmpty(cid){
+  return !sigState[cid] || !sigState[cid].hasStrokes;
+}
+
+function generateID(){
+  var fecha = document.getElementById("f-fecha").value || new Date().toISOString().split("T")[0];
+  var d = fecha.replace(/-/g, "");
+  var key = "idSeq_" + d;
+  var seq = parseInt(localStorage.getItem(key) || "0", 10) + 1;
+  localStorage.setItem(key, seq);
+  var id = "INS-" + d + "-" + String(seq).padStart(4, "0");
+  document.getElementById("displayID").textContent = id;
+  return id;
+}
+
+function saveRecord(){
+  var fecha = document.getElementById("f-fecha").value;
+  var inspector = document.getElementById("f-inspector").value;
+  var labor = document.getElementById("f-labor").value;
+  if(!fecha){ showToast("Selecciona la fecha", true); return; }
+  if(!inspector){ showToast("Selecciona el inspector", true); return; }
+  if(!labor){ showToast("Selecciona la labor", true); return; }
+
+  // Validar que todos los NO CUMPLE tengan observacion y foto
+  var ncSinObs = [], ncSinFoto = [];
+  for(var sv=0;sv<SECTIONS.length;sv++){
+    var secv = SECTIONS[sv];
+    for(var iv=0;iv<secv.items.length;iv++){
+      var iidv = secv.id + "_" + iv;
+      var dv = formData[iidv];
+      if(dv && dv.status === "no"){
+        if(!dv.obs || dv.obs.trim().length === 0) ncSinObs.push(secv.num+"."+(iv+1));
+        if(!dv.photos || dv.photos.length === 0) ncSinFoto.push(secv.num+"."+(iv+1));
+      }
+    }
+  }
+  if(ncSinObs.length > 0){
+    showToast("Falta observacion en NC: " + ncSinObs.slice(0,3).join(", ") + (ncSinObs.length>3?" y "+(ncSinObs.length-3)+" mas":""), true);
+    return;
+  }
+  if(ncSinFoto.length > 0){
+    if(!confirm("Faltan fotos en " + ncSinFoto.length + " hallazgo(s) NC:\n" + ncSinFoto.slice(0,5).join(", ") + "\n\n¿Guardar sin fotos?")) return;
+  }
+
+  if(isSigEmpty("sigInspector") || isSigEmpty("sigLider")){
+    var faltan = [];
+    if(isSigEmpty("sigInspector")) faltan.push("Inspector");
+    if(isSigEmpty("sigLider")) faltan.push("Lider");
+    if(!confirm("Falta firma de: " + faltan.join(" y ") + "\n\nGuardar de todas formas?")) return;
+  }
+  var rec = {
+    id: Date.now(),
+    recID: generateID(),
+    savedAt: new Date().toISOString(),
+    fecha: fecha,
+    turno: document.getElementById("f-turno").value,
+    actividad: document.getElementById("f-actividad").value,
+    inspector: inspector,
+    labor: labor,
+    contratista: document.getElementById("f-contratista").value,
+    guardia: document.getElementById("f-guardia").value,
+    lider: document.getElementById("f-lider").value,
+    items: JSON.parse(JSON.stringify(formData)),
+    sigInspector: getSigData("sigInspector"),
+    sigLider: getSigData("sigLider")
+  };
+  var recs = getRecords();
+  recs.unshift(rec);
+  try{
+    localStorage.setItem("inspRecords", JSON.stringify(recs));
+    updateBadge();
+    // Sincronizar con Google Sheets
+    syncToSheets(rec, function(){
+      showToast("Registro guardado y enviado a Google Sheets ✓");
+    }, function(err){
+      if(err === "offline"){
+        showToast("Guardado localmente — se sincronizara al conectarse");
+      } else {
+        showToast("Guardado localmente — reintentando Sheets...");
+      }
+    });
+    resetForm();
+    setTimeout(function(){ switchTab("records"); }, 900);
+  }catch(e){
+    showToast("Almacenamiento lleno - exporta a Excel primero", true);
+  }
+}
+function getRecords(){
+  try{ return JSON.parse(localStorage.getItem("inspRecords") || "[]"); }
+  catch(e){ return []; }
+}
+
+function saveAndDownloadPDF(){
+  // Validar campos obligatorios
+  var fecha = document.getElementById("f-fecha").value;
+  var inspector = document.getElementById("f-inspector").value;
+  var labor = document.getElementById("f-labor").value;
+  if(!fecha){ showToast("Selecciona la fecha", true); return; }
+  if(!inspector){ showToast("Selecciona el inspector", true); return; }
+  if(!labor){ showToast("Selecciona la labor", true); return; }
+  if(isSigEmpty("sigInspector") || isSigEmpty("sigLider")){
+    var faltan = [];
+    if(isSigEmpty("sigInspector")) faltan.push("Inspector");
+    if(isSigEmpty("sigLider")) faltan.push("Lider");
+    if(!confirm("Falta firma de: " + faltan.join(" y ") + "\n\nContinuar y descargar PDF de todas formas?")) return;
+  }
+  // Construir y guardar el registro
+  var rec = {
+    id: Date.now(),
+    recID: generateID(),
+    savedAt: new Date().toISOString(),
+    fecha: fecha,
+    turno: document.getElementById("f-turno").value,
+    actividad: document.getElementById("f-actividad").value,
+    inspector: inspector,
+    labor: labor,
+    contratista: document.getElementById("f-contratista").value,
+    guardia: document.getElementById("f-guardia").value,
+    lider: document.getElementById("f-lider").value,
+    items: JSON.parse(JSON.stringify(formData)),
+    sigInspector: getSigData("sigInspector"),
+    sigLider: getSigData("sigLider")
+  };
+  var recs = getRecords();
+  recs.unshift(rec);
+  try{
+    localStorage.setItem("inspRecords", JSON.stringify(recs));
+    updateBadge();
+    showToast("Registro guardado — generando PDF...");
+    // Sincronizar con Google Sheets
+    syncToSheets(rec, null, null);
+    // Generar y descargar PDF directamente (descarga como archivo HTML imprimible)
+    setTimeout(function(){
+      downloadPDFDirect(rec);
+      resetForm();
+    }, 400);
+  }catch(e){
+    showToast("Almacenamiento lleno - exporta a Excel primero", true);
+  }
+}
+
+function downloadPDFDirect(rec){
+  // Generar el HTML del informe y descargarlo directamente como archivo
+  // El inspector lo abre desde la carpeta InspeccionLabores y usa Imprimir > Guardar PDF
+  var vs = Object.keys(rec.items || {}).map(function(k){ return rec.items[k]; });
+  var okN = vs.filter(function(v){ return v && v.status==="ok"; }).length;
+  var noN = vs.filter(function(v){ return v && v.status==="no"; }).length;
+  var naN = vs.filter(function(v){ return v && v.status==="na"; }).length;
+  var totN = 0;
+  for(var s=0;s<SECTIONS.length;s++) totN += SECTIONS[s].items.length;
+  var pct = (totN-naN)>0 ? Math.round(okN/(totN-naN)*100) : 0;
+  var idDisp = rec.recID || ("INS-" + rec.id.toString().slice(-6));
+
+  var filas = "";
+  var gN = 0;
+  for(var s=0;s<SECTIONS.length;s++){
+    var sec = SECTIONS[s];
+    filas += "<tr class=\"sec-row\"><td colspan=\"4\">" + sec.num + ". " + sec.title + "</td></tr>";
+    for(var i=0;i<sec.items.length;i++){
+      gN++;
+      var iid = sec.id + "_" + i;
+      var d = rec.items[iid];
+      var es = sec.items[i];
+      var st = d ? (d.status==="ok" ? "CUMPLE" : d.status==="no" ? "NO CUMPLE" : "N/A") : "-";
+      var cls = d ? (d.status==="ok" ? "ok" : d.status==="no" ? "no" : "na") : "";
+      var obsHtml = (d && d.obs) ? "<div class=\"obs\">Obs: " + d.obs + "</div>" : "";
+      var fotoHtml = "";
+      if(d && d.photos && d.photos.length){
+        fotoHtml = "<div class=\"fotos\"><img src=\"" + d.photos[0] + "\"></div>";
+      }
+      var altCls = (gN%2===0) ? "alt" : "";
+      filas += "<tr class=\"" + altCls + "\"><td class=\"num\">" + gN + "</td>" +
+               "<td class=\"desc\">" + es + obsHtml + fotoHtml + "</td>" +
+               "<td class=\"badge " + cls + "\">" + st + "</td>" +
+               "<td class=\"obsCol\">" + (d&&d.obs?d.obs:"") + "</td></tr>";
+    }
+  }
+  var firmaInsp = rec.sigInspector ? ("<img src=\"" + rec.sigInspector + "\" class=\"sig-img\">") : "<div class=\"no-sig\">Sin firma</div>";
+  var firmaLid  = rec.sigLider     ? ("<img src=\"" + rec.sigLider     + "\" class=\"sig-img\">") : "<div class=\"no-sig\">Sin firma</div>";
+
+  var doc = "";
+  doc += "<!DOCTYPE html><html><head><meta charset=\"UTF-8\">";
+  doc += "<title>Inspeccion " + idDisp + "</title><style>";
+  doc += "*{box-sizing:border-box;margin:0;padding:0}";
+  doc += "body{font-family:Arial,sans-serif;font-size:9pt;color:#1a1a1a;background:#fff}";
+  doc += ".header{background:#0f1923;color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center}";
+  doc += ".header h1{font-size:12pt;color:#f5a623;font-weight:bold;margin-bottom:2px}";
+  doc += ".header p{font-size:7.5pt;color:#8a9ab0;margin:0}";
+  doc += ".rec-id{font-size:13pt;font-weight:bold;color:#f5a623;font-family:monospace;text-align:right}";
+  doc += ".rec-date{font-size:7pt;color:#8a9ab0;text-align:right}";
+  doc += ".datos{background:#1e2f3e;color:#e8ecef;padding:8px 14px}";
+  doc += ".datos-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 12px;margin-top:6px}";
+  doc += ".dato-lbl{font-size:6.5pt;color:#8a9ab0;text-transform:uppercase}";
+  doc += ".dato-val{font-size:9pt;font-weight:bold;color:#e8ecef}";
+  doc += ".labor-row{margin:6px 0 4px;border-top:1px solid #2a3f52;padding-top:5px}";
+  doc += ".labor-val{font-size:10pt;font-weight:bold;color:#4fc3f7;font-family:monospace}";
+  doc += ".stats{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;margin:6px 0}";
+  doc += ".stat{padding:5px 4px;text-align:center;border-radius:3px}";
+  doc += ".stat-num{font-size:14pt;font-weight:bold;display:block}";
+  doc += ".stat-lbl{font-size:6pt;text-transform:uppercase;display:block;margin-top:1px}";
+  doc += ".s0{background:#334e68;color:#e8ecef}.s1{background:#1a6b3a;color:#fff}";
+  doc += ".s2{background:#b91c1c;color:#fff}.s3{background:#6b7280;color:#fff}.s4{background:#c07800;color:#fff}";
+  doc += "table{width:100%;border-collapse:collapse;font-size:8pt}";
+  doc += "th{background:#0f1923;color:#f5a623;padding:4px 5px;text-align:left;font-size:7.5pt;border:1px solid #2a3f52}";
+  doc += "td{padding:3px 5px;border:1px solid #dde2e8;vertical-align:top}";
+  doc += "tr.alt td{background:#f7f8fa}";
+  doc += "tr.sec-row td{background:#1a2733;color:#f5a623;font-weight:bold;font-size:8pt;padding:4px 6px;border:none}";
+  doc += ".num{width:22px;text-align:center;color:#6b7280;font-size:7.5pt}";
+  doc += ".desc{width:52%}.obs{font-size:7pt;color:#6b7280;margin-top:2px;font-style:italic}";
+  doc += ".fotos img{width:50px;height:50px;object-fit:cover;border-radius:2px;border:1px solid #dde2e8;margin-top:3px}";
+  doc += ".badge{width:56px;text-align:center;font-weight:bold;font-size:7pt;border-radius:3px;white-space:nowrap}";
+  doc += ".badge.ok{background:#e8f5ee;color:#1a6b3a}.badge.no{background:#fdecea;color:#b91c1c}.badge.na{background:#f3f4f6;color:#6b7280}";
+  doc += ".obsCol{font-size:7.5pt;color:#444;width:22%}";
+  doc += ".firmas{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;padding:8px 14px}";
+  doc += ".firma-box{border:1px solid #dde2e8;border-radius:4px;padding:6px;text-align:center;background:#f9fafb}";
+  doc += ".firma-lbl{font-size:7pt;color:#6b7280;margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px}";
+  doc += ".firma-nombre{font-size:8.5pt;font-weight:bold;color:#1a1a1a;margin-top:4px}";
+  doc += ".sig-img{max-width:100%;height:50px;object-fit:contain;background:#fff;display:block;margin:0 auto}";
+  doc += ".no-sig{height:50px;line-height:50px;color:#ccc;font-size:8pt}";
+  doc += ".pie{padding:4px 14px;border-top:1px solid #dde2e8;display:flex;justify-content:space-between;font-size:6.5pt;color:#8a9ab0}";
+  doc += ".print-bar{background:#1a2733;padding:10px 14px;display:flex;gap:10px;align-items:center;border-bottom:2px solid #f5a623;position:sticky;top:0}";
+  doc += ".btn-p{background:#f5a623;color:#000;font-weight:bold;font-size:11pt;padding:8px 20px;border:none;border-radius:6px;cursor:pointer}";
+  doc += ".hint{color:#8a9ab0;font-size:9pt}";
+  doc += "@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-bar{display:none}}";
+  doc += "<\/style>\n<\/head><body>";
+  doc += "<div class=\"print-bar\">";
+  doc += "<button class=\"btn-p\" onclick=\"window.print()\">Imprimir / Guardar como PDF</button>";
+  doc += "<span class=\"hint\">Elige Imprimir y selecciona Guardar como PDF. Guardalo en la carpeta InspeccionLabores</span>";
+  doc += "</div>";
+  doc += "<div class=\"header\"><div><h1>INFORME DE INSPECCION DE LABORES</h1><p>Inspector de Proyectos</p></div>";
+  doc += "<div><div class=\"rec-id\">" + idDisp + "</div><div class=\"rec-date\">" + new Date(rec.savedAt).toLocaleString("es-CO") + "</div></div></div>";
+  doc += "<div class=\"datos\">";
+  doc += "<div class=\"labor-row\"><span class=\"dato-lbl\">Labor / Actividad</span><br>";
+  doc += "<span class=\"labor-val\">" + (rec.labor||"-") + "</span>";
+  doc += "<span style=\"margin:0 8px;color:#8a9ab0\">|</span>";
+  doc += "<span style=\"color:#e8ecef;font-size:8.5pt\">" + (rec.actividad||"-") + "</span></div>";
+  doc += "<div class=\"datos-grid\">";
+  doc += "<div><div class=\"dato-lbl\">Fecha</div><div class=\"dato-val\">" + (rec.fecha||"-") + "</div></div>";
+  doc += "<div><div class=\"dato-lbl\">Turno</div><div class=\"dato-val\">" + (rec.turno||"-") + "</div></div>";
+  doc += "<div><div class=\"dato-lbl\">Guardia</div><div class=\"dato-val\">" + (rec.guardia||"-") + "</div></div>";
+  doc += "<div><div class=\"dato-lbl\">Inspector</div><div class=\"dato-val\">" + (rec.inspector||"-") + "</div></div>";
+  doc += "<div><div class=\"dato-lbl\">Contratista</div><div class=\"dato-val\">" + (rec.contratista||"-") + "</div></div>";
+  doc += "<div><div class=\"dato-lbl\">Lider de Turno</div><div class=\"dato-val\">" + (rec.lider||"-") + "</div></div>";
+  doc += "</div></div>";
+  doc += "<div class=\"stats\">";
+  doc += "<div class=\"stat s0\"><span class=\"stat-num\">" + totN + "</span><span class=\"stat-lbl\">Total</span></div>";
+  doc += "<div class=\"stat s1\"><span class=\"stat-num\">" + okN + "</span><span class=\"stat-lbl\">Cumple</span></div>";
+  doc += "<div class=\"stat s2\"><span class=\"stat-num\">" + noN + "</span><span class=\"stat-lbl\">No Cumple</span></div>";
+  doc += "<div class=\"stat s3\"><span class=\"stat-num\">" + naN + "</span><span class=\"stat-lbl\">N/A</span></div>";
+  doc += "<div class=\"stat s4\"><span class=\"stat-num\">" + pct + "%</span><span class=\"stat-lbl\">Cumplim.</span></div>";
+  doc += "</div>";
+  doc += "<table><thead><tr><th style=\"width:22px\">N</th><th>Estandar</th><th style=\"width:58px\">Resultado</th><th style=\"width:22%\">Observacion</th></tr></thead>";
+  doc += "<tbody>" + filas + "</tbody></table>";
+  doc += "<div class=\"firmas\">";
+  doc += "<div class=\"firma-box\"><div class=\"firma-lbl\">Firma Inspector</div>" + firmaInsp + "<div class=\"firma-nombre\">" + (rec.inspector||"-") + "</div></div>";
+  doc += "<div class=\"firma-box\"><div class=\"firma-lbl\">Firma Lider de Turno</div>" + firmaLid + "<div class=\"firma-nombre\">" + (rec.lider||"-") + "</div></div>";
+  doc += "</div>";
+  doc += "<div class=\"pie\"><span>" + idDisp + " | " + (rec.labor||"") + " | " + (rec.fecha||"") + " | " + (rec.inspector||"") + "</span><span>Inspeccion de Labores</span></div>";
+  doc += "<\/body><\/html>";
+
+  // Descarga directa como archivo .html
+  var blob = new Blob([doc], {type:"text/html;charset=utf-8"});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url;
+  a.download = idDisp + "_" + (rec.labor||"labor").replace(/[^a-zA-Z0-9_-]/g,"_") + ".html";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast("PDF descargado en tu carpeta InspeccionLabores");
+}
+
+function resetForm(){
+  formData = {};
+  photos = {};
+  ["f-fecha","f-actividad","f-inspector","f-contratista","f-guardia","f-lider","f-turno"].forEach(function(id){
+    document.getElementById(id).value = "";
+  });
+  document.getElementById("f-labor").value = "";
+  var ls = document.getElementById("laborSearch");
+  ls.value = "";
+  ls.classList.remove("has-val");
+  var lh = document.getElementById("laborHint");
+  lh.textContent = "Sin seleccion - toca para buscar";
+  lh.style.color = "";
+  document.getElementById("laborDD").innerHTML = "";
+  renderChecklist();
+  clearSig("sigInspector");
+  clearSig("sigLider");
+  document.getElementById("f-fecha").value = new Date().toISOString().split("T")[0];
+  generateID();
+}
+</script>
+<script>
+function renderRecords(){
+  var recs = getRecords();
+  var list = document.getElementById("recordsList");
+  if(!recs.length){
+    list.innerHTML = "<div class=\"empty\"><div class=\"empty-icon\">[ ]</div><p>No hay registros guardados aun.</p></div>";
+    return;
+  }
+  var html = "";
+  for(var i=0;i<recs.length;i++){
+    var r = recs[i];
+    var v = Object.keys(r.items || {}).map(function(k){ return r.items[k]; });
+    var ok = v.filter(function(x){ return x && x.status==="ok"; }).length;
+    var no = v.filter(function(x){ return x && x.status==="no"; }).length;
+    var na = v.filter(function(x){ return x && x.status==="na"; }).length;
+    var d = new Date(r.savedAt);
+    var ds = d.toLocaleDateString("es-CO", {day:"2-digit", month:"short", year:"numeric"});
+    var ts = d.toLocaleTimeString("es-CO", {hour:"2-digit", minute:"2-digit"});
+    var tp = v.reduce(function(s,x){ return s + (x && x.photos ? x.photos.length : 0); }, 0);
+    var hasSig = r.sigInspector || r.sigLider;
+    var idDisp = r.recID || ("#" + r.id.toString().slice(-6));
+
+    html += "<div class=\"record-card\">";
+    html += "<div class=\"record-head\"><div class=\"record-id\">" + idDisp + "</div><div class=\"record-date\">" + ds + " " + ts + "</div></div>";
+    html += "<div class=\"record-meta\">";
+    html += "<div class=\"meta-chip\">Inspector: <span>" + (r.inspector||"-") + "</span></div>";
+    html += "<div class=\"meta-chip\">Labor: <span style=\"color:#4fc3f7;font-family:monospace\">" + (r.labor||"-") + "</span></div>";
+    if(r.turno) html += "<div class=\"meta-chip\">Turno: <span>" + r.turno + "</span></div>";
+    if(tp>0) html += "<div class=\"meta-chip\">Fotos: <span>" + tp + "</span></div>";
+    if(hasSig) html += "<div class=\"meta-chip\">Firmado: <span>Si</span></div>";
+    html += "</div>";
+    html += "<div class=\"record-stats\">";
+    html += "<div class=\"stat ok\"><div class=\"stat-num\">" + ok + "</div><div class=\"stat-lbl\">Cumple</div></div>";
+    html += "<div class=\"stat no\"><div class=\"stat-num\">" + no + "</div><div class=\"stat-lbl\">No Cumple</div></div>";
+    html += "<div class=\"stat na\"><div class=\"stat-num\">" + na + "</div><div class=\"stat-lbl\">N/A</div></div>";
+    html += "</div>";
+    html += "<div class=\"record-actions\">";
+    html += "<button class=\"btn-act btn-view\" onclick=\"viewDetail(" + r.id + ")\">Ver</button>";
+    html += "<button class=\"btn-act btn-pdf\" onclick=\"exportPDF(" + r.id + ")\">PDF</button>";
+    html += "<button class=\"btn-act btn-xls\" onclick=\"exportOneXLS(" + r.id + ")\">Excel</button>";
+    // Boton borrar eliminado para evitar eliminaciones accidentales
+    html += "</div></div>";
+  }
+  list.innerHTML = html;
+}
+
+function deleteRecord(id){
+  if(!confirm("Eliminar este registro?")) return;
+  var recs = getRecords().filter(function(r){ return r.id !== id; });
+  localStorage.setItem("inspRecords", JSON.stringify(recs));
+  renderRecords();
+  updateBadge();
+  showToast("Registro eliminado");
+}
+
+function viewDetail(id){
+  var rec = getRecords().filter(function(r){ return r.id === id; })[0];
+  if(!rec) return;
+  var idDisp = rec.recID || ("#" + id.toString().slice(-6));
+  document.getElementById("detailTitle").textContent = idDisp + " - " + (rec.inspector||"");
+
+  var html = "<div class=\"export-row\">";
+  html += "<button class=\"exp-pdf\" onclick=\"exportPDF(" + id + ")\">Exportar PDF</button>";
+  html += "<button class=\"exp-xls\" onclick=\"exportOneXLS(" + id + ")\">Exportar Excel</button>";
+  html += "</div>";
+
+  html += "<div class=\"form-header\" style=\"margin-bottom:14px\">";
+  html += "<div class=\"form-title\">Datos Generales</div>";
+  html += "<div style=\"display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px\">";
+  html += "<div style=\"grid-column:1/-1;background:var(--c-bg);border:1px solid var(--c-accent);border-radius:4px;padding:6px 10px;display:flex;align-items:center;justify-content:space-between;margin-bottom:4px\">";
+  html += "<span style=\"font-size:10px;color:var(--c-muted);font-weight:600;text-transform:uppercase\">ID Registro</span>";
+  html += "<span style=\"font-size:15px;font-weight:800;color:var(--c-accent);font-family:monospace\">" + idDisp + "</span></div>";
+  html += "<div><b>Fecha:</b> " + (rec.fecha||"-") + "</div><div><b>Turno:</b> " + (rec.turno||"-") + "</div>";
+  html += "<div><b>Inspector:</b> " + (rec.inspector||"-") + "</div><div><b>Guardia:</b> " + (rec.guardia||"-") + "</div>";
+  html += "<div style=\"grid-column:1/-1\"><b>Labor:</b> <span style=\"color:#4fc3f7;font-family:monospace;font-size:13px\">" + (rec.labor||"-") + "</span></div>";
+  html += "<div><b>Contratista:</b> " + (rec.contratista||"-") + "</div><div><b>Lider:</b> " + (rec.lider||"-") + "</div>";
+  html += "<div style=\"grid-column:1/-1\"><b>Actividad:</b> " + (rec.actividad||"-") + "</div>";
+  html += "</div></div>";
+
+  for(var s=0;s<SECTIONS.length;s++){
+    var sec = SECTIONS[s];
+    html += "<div class=\"sec-header\">" + sec.num + ". " + sec.title + "</div>";
+    for(var i=0;i<sec.items.length;i++){
+      var iid = sec.id + "_" + i;
+      var d = rec.items[iid];
+      var sh = "<span class=\"detail-item-status\" style=\"background:#2a2e33;color:#555\">-</span>";
+      if(d && d.status==="ok") sh = "<span class=\"detail-item-status status-ok\">CUMPLE</span>";
+      if(d && d.status==="no") sh = "<span class=\"detail-item-status status-no\">NO CUMPLE</span>";
+      if(d && d.status==="na") sh = "<span class=\"detail-item-status status-na\">N/A</span>";
+      var es = sec.items[i];
+      var thumbs = "";
+      if(d && d.photos && d.photos.length){
+        thumbs = "<div class=\"photo-thumb\">";
+        for(var pj=0;pj<d.photos.length;pj++){
+          thumbs += "<img src=\"" + d.photos[pj] + "\" loading=\"lazy\">";
+        }
+        thumbs += "</div>";
+      }
+      var obsHtml = (d && d.obs) ? "<div class=\"detail-obs\">" + d.obs + "</div>" : "";
+      html += "<div class=\"detail-item\"><div class=\"detail-item-desc\">" + (i+1) + ". " + es + obsHtml + thumbs + "</div>" + sh + "</div>";
+    }
+  }
+
+  if(rec.sigInspector || rec.sigLider){
+    html += "<div class=\"firma-section\"><div class=\"sec-header\">Firmas capturadas</div>";
+    if(rec.sigInspector){
+      html += "<div style=\"margin-bottom:10px\"><div style=\"font-size:11px;color:var(--c-muted);margin-bottom:5px\">Inspector</div>";
+      html += "<div class=\"canvas-wrap\"><img src=\"" + rec.sigInspector + "\" style=\"width:100%;display:block;background:#fff\"></div></div>";
+    }
+    if(rec.sigLider){
+      html += "<div><div style=\"font-size:11px;color:var(--c-muted);margin-bottom:5px\">Lider de Turno</div>";
+      html += "<div class=\"canvas-wrap\"><img src=\"" + rec.sigLider + "\" style=\"width:100%;display:block;background:#fff\"></div></div>";
+    }
+    html += "</div>";
+  }
+
+  document.getElementById("detailBody").innerHTML = html;
+  document.getElementById("detailOverlay").classList.add("open");
+}
+function closeDetail(){
+  document.getElementById("detailOverlay").classList.remove("open");
+}
+
+function exportPDF(id){
+  var rec = getRecords().filter(function(r){ return r.id === id; })[0];
+  if(!rec){ showToast("Registro no encontrado", true); return; }
+
+  var vs = Object.keys(rec.items || {}).map(function(k){ return rec.items[k]; });
+  var okN = vs.filter(function(v){ return v && v.status==="ok"; }).length;
+  var noN = vs.filter(function(v){ return v && v.status==="no"; }).length;
+  var naN = vs.filter(function(v){ return v && v.status==="na"; }).length;
+  var totN = 0;
+  for(var s=0;s<SECTIONS.length;s++) totN += SECTIONS[s].items.length;
+  var pct = (totN-naN) > 0 ? Math.round(okN/(totN-naN)*100) : 0;
+
+  var filas = "";
+  var gN = 0;
+  for(var s=0;s<SECTIONS.length;s++){
+    var sec = SECTIONS[s];
+    filas += "<tr class=\"sec-row\"><td colspan=\"4\">" + sec.num + ". " + sec.title + "</td></tr>";
+    for(var i=0;i<sec.items.length;i++){
+      gN++;
+      var iid = sec.id + "_" + i;
+      var d = rec.items[iid];
+      var es = sec.items[i];
+      var st = d ? (d.status==="ok" ? "CUMPLE" : d.status==="no" ? "NO CUMPLE" : "N/A") : "-";
+      var cls = d ? (d.status==="ok" ? "ok" : d.status==="no" ? "no" : "na") : "";
+      var obsHtml = (d && d.obs) ? "<div class=\"obs\">Obs: " + d.obs + "</div>" : "";
+      var fotoHtml = "";
+      if(d && d.photos && d.photos.length){
+        fotoHtml = "<div class=\"fotos\">";
+        var maxShow = Math.min(d.photos.length, 6);
+        for(var pj=0;pj<maxShow;pj++){
+          fotoHtml += "<img src=\"" + d.photos[pj] + "\">";
+        }
+        fotoHtml += "</div>";
+      }
+      var altCls = (gN % 2 === 0) ? "alt" : "";
+      filas += "<tr class=\"" + altCls + "\"><td class=\"num\">" + gN + "</td><td class=\"desc\">" + es + obsHtml + fotoHtml + "</td><td class=\"badge " + cls + "\">" + st + "</td><td class=\"obsCol\">" + (d && d.obs ? d.obs : "") + "</td></tr>";
+    }
+  }
+
+  var firmaInsp = rec.sigInspector ? ("<img src=\"" + rec.sigInspector + "\" class=\"sig-img\">") : "<div class=\"no-sig\">Sin firma</div>";
+  var firmaLid = rec.sigLider ? ("<img src=\"" + rec.sigLider + "\" class=\"sig-img\">") : "<div class=\"no-sig\">Sin firma</div>";
+  var idDisp = rec.recID || ("ID-" + rec.id.toString().slice(-6));
+
+  var doc = "";
+  doc += "<!DOCTYPE html><html><head><meta charset=\"UTF-8\">";
+  doc += "<title>Inspeccion " + idDisp + "</title><style>";
+  doc += "*{box-sizing:border-box;margin:0;padding:0}";
+  doc += "body{font-family:Arial,sans-serif;font-size:9pt;color:#1a1a1a;background:#fff}";
+  doc += ".header{background:#0f1923;color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center}";
+  doc += ".header h1{font-size:12pt;color:#f5a623;font-weight:bold;margin-bottom:2px}";
+  doc += ".header p{font-size:7.5pt;color:#8a9ab0}";
+  doc += ".rec-id{font-size:13pt;font-weight:bold;color:#f5a623;font-family:monospace;text-align:right}";
+  doc += ".rec-date{font-size:7pt;color:#8a9ab0;text-align:right}";
+  doc += ".datos{background:#1e2f3e;color:#e8ecef;padding:8px 14px}";
+  doc += ".datos-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 12px;margin-top:6px}";
+  doc += ".dato-lbl{font-size:6.5pt;color:#8a9ab0;text-transform:uppercase}";
+  doc += ".dato-val{font-size:9pt;font-weight:bold;color:#e8ecef}";
+  doc += ".labor-row{margin:6px 0 4px;border-top:1px solid #2a3f52;padding-top:5px}";
+  doc += ".labor-val{font-size:10pt;font-weight:bold;color:#4fc3f7;font-family:monospace}";
+  doc += ".act-val{font-size:8.5pt;color:#e8ecef}";
+  doc += ".stats{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;margin:6px 0}";
+  doc += ".stat{padding:5px 4px;text-align:center;border-radius:3px}";
+  doc += ".stat-num{font-size:14pt;font-weight:bold;display:block}";
+  doc += ".stat-lbl{font-size:6pt;text-transform:uppercase;display:block;margin-top:1px}";
+  doc += ".s0{background:#334e68;color:#e8ecef}.s1{background:#1a6b3a;color:#fff}";
+  doc += ".s2{background:#b91c1c;color:#fff}.s3{background:#6b7280;color:#fff}.s4{background:#c07800;color:#fff}";
+  doc += "table{width:100%;border-collapse:collapse;font-size:8pt}";
+  doc += "th{background:#0f1923;color:#f5a623;padding:4px 5px;text-align:left;font-size:7.5pt;border:1px solid #2a3f52}";
+  doc += "td{padding:3px 5px;border:1px solid #dde2e8;vertical-align:top}";
+  doc += "tr.alt td{background:#f7f8fa}";
+  doc += "tr.sec-row td{background:#1a2733;color:#f5a623;font-weight:bold;font-size:8pt;padding:4px 6px;border:none}";
+  doc += ".num{width:22px;text-align:center;color:#6b7280;font-size:7.5pt}";
+  doc += ".desc{width:55%}";
+  doc += ".obs{font-size:7pt;color:#6b7280;margin-top:2px;font-style:italic}";
+  doc += ".fotos{display:flex;gap:3px;margin-top:3px;flex-wrap:wrap}";
+  doc += ".fotos img{width:46px;height:46px;object-fit:cover;border-radius:2px;border:1px solid #dde2e8}";
+  doc += ".badge{width:56px;text-align:center;font-weight:bold;font-size:7pt;border-radius:3px;white-space:nowrap}";
+  doc += ".badge.ok{background:#e8f5ee;color:#1a6b3a}.badge.no{background:#fdecea;color:#b91c1c}.badge.na{background:#f3f4f6;color:#6b7280}";
+  doc += ".obsCol{font-size:7.5pt;color:#444;width:22%}";
+  doc += ".firmas{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}";
+  doc += ".firma-box{border:1px solid #dde2e8;border-radius:4px;padding:6px;text-align:center;background:#f9fafb}";
+  doc += ".firma-lbl{font-size:7pt;color:#6b7280;margin-bottom:4px;text-transform:uppercase}";
+  doc += ".firma-nombre{font-size:8.5pt;font-weight:bold;color:#1a1a1a;margin-top:4px}";
+  doc += ".sig-img{max-width:100%;height:50px;object-fit:contain;background:#fff;display:block;margin:0 auto}";
+  doc += ".no-sig{height:50px;line-height:50px;color:#ccc;font-size:8pt}";
+  doc += ".pie{margin-top:8px;border-top:1px solid #dde2e8;padding-top:4px;font-size:6.5pt;color:#8a9ab0;display:flex;justify-content:space-between}";
+  doc += "@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.no-print{display:none}}";
+  doc += ".print-bar{background:#1a2733;padding:10px 14px;display:flex;gap:10px;align-items:center;position:sticky;top:0;border-bottom:2px solid #f5a623}";
+  doc += ".btn-print{background:#f5a623;color:#000;font-weight:bold;font-size:11pt;padding:8px 20px;border:none;border-radius:6px;cursor:pointer}";
+  doc += ".btn-close{background:#2a3f52;color:#e8ecef;font-size:10pt;padding:8px 14px;border:none;border-radius:6px;cursor:pointer}";
+  doc += ".print-hint{color:#8a9ab0;font-size:9pt}";
+  doc += "<\/style>\n<\/head><body>";
+
+  doc += "<div class=\"print-bar no-print\">";
+  doc += "<button class=\"btn-print\" onclick=\"window.print()\">Imprimir o Guardar como PDF</button>";
+  doc += "<button class=\"btn-close\" onclick=\"window.close()\">Cerrar</button>";
+  doc += "<span class=\"print-hint\">Usa Imprimir y elige Guardar como PDF, luego guardalo en tu carpeta InspeccionLabores</span>";
+  doc += "</div>";
+
+  doc += "<div class=\"header\"><div><h1>INFORME DE INSPECCION DE LABORES</h1><p>Inspector de Proyectos</p></div>";
+  doc += "<div><div class=\"rec-id\">" + idDisp + "</div><div class=\"rec-date\">" + new Date(rec.savedAt).toLocaleString("es-CO") + "</div></div></div>";
+
+  doc += "<div class=\"datos\">";
+  doc += "<div class=\"labor-row\"><span class=\"dato-lbl\">Labor / Actividad:</span><br>";
+  doc += "<span class=\"labor-val\">" + (rec.labor||"-") + "</span>";
+  doc += "<span style=\"margin-left:10px;color:#8a9ab0\">|</span>";
+  doc += "<span style=\"margin-left:10px\" class=\"act-val\">" + (rec.actividad||"-") + "</span></div>";
+  doc += "<div class=\"datos-grid\">";
+  doc += "<div><div class=\"dato-lbl\">Fecha</div><div class=\"dato-val\">" + (rec.fecha||"-") + "</div></div>";
+  doc += "<div><div class=\"dato-lbl\">Turno</div><div class=\"dato-val\">" + (rec.turno||"-") + "</div></div>";
+  doc += "<div><div class=\"dato-lbl\">Guardia</div><div class=\"dato-val\">" + (rec.guardia||"-") + "</div></div>";
+  doc += "<div><div class=\"dato-lbl\">Inspector</div><div class=\"dato-val\">" + (rec.inspector||"-") + "</div></div>";
+  doc += "<div><div class=\"dato-lbl\">Contratista</div><div class=\"dato-val\">" + (rec.contratista||"-") + "</div></div>";
+  doc += "<div><div class=\"dato-lbl\">Lider de Turno</div><div class=\"dato-val\">" + (rec.lider||"-") + "</div></div>";
+  doc += "</div></div>";
+
+  doc += "<div class=\"stats\">";
+  doc += "<div class=\"stat s0\"><span class=\"stat-num\">" + totN + "</span><span class=\"stat-lbl\">Total</span></div>";
+  doc += "<div class=\"stat s1\"><span class=\"stat-num\">" + okN + "</span><span class=\"stat-lbl\">Cumple</span></div>";
+  doc += "<div class=\"stat s2\"><span class=\"stat-num\">" + noN + "</span><span class=\"stat-lbl\">No Cumple</span></div>";
+  doc += "<div class=\"stat s3\"><span class=\"stat-num\">" + naN + "</span><span class=\"stat-lbl\">N/A</span></div>";
+  doc += "<div class=\"stat s4\"><span class=\"stat-num\">" + pct + "%</span><span class=\"stat-lbl\">Cumplim.</span></div>";
+  doc += "</div>";
+
+  doc += "<table><thead><tr><th style=\"width:22px\">N</th><th>Estandar de Reconocimiento</th><th style=\"width:58px\">Resultado</th><th style=\"width:22%\">Observacion</th></tr></thead>";
+  doc += "<tbody>" + filas + "</tbody></table>";
+
+  doc += "<div class=\"firmas\">";
+  doc += "<div class=\"firma-box\"><div class=\"firma-lbl\">Firma Inspector</div>" + firmaInsp + "<div class=\"firma-nombre\">" + (rec.inspector||"-") + "</div></div>";
+  doc += "<div class=\"firma-box\"><div class=\"firma-lbl\">Firma Lider de Turno</div>" + firmaLid + "<div class=\"firma-nombre\">" + (rec.lider||"-") + "</div></div>";
+  doc += "</div>";
+
+  doc += "<div class=\"pie\"><span>" + idDisp + " | " + (rec.labor||"") + " | " + (rec.fecha||"") + " | " + (rec.inspector||"") + "</span><span>Inspeccion de Labores</span></div>";
+  doc += "<\/body><\/html>";
+
+  var win = window.open("", "_blank");
+  if(win){
+    win.document.open();
+    win.document.write(doc);
+    win.document.close();
+    showToast("Informe listo - usa Imprimir para guardar como PDF");
+  }else{
+    var blob = new Blob([doc], {type:"text/html;charset=utf-8"});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "Inspeccion_" + (rec.fecha||"sf") + "_" + (rec.labor||"labor").replace(/[^a-zA-Z0-9_-]/g,"_") + ".html";
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("Descargado como HTML - abrelo y usa Imprimir, Guardar como PDF");
+  }
+}
+
+function buildRows(recs){
+  var hdr = ["ID REGISTRO","FECHA","TURNO","INSPECTOR","LABOR","CONTRATISTA","GUARDIA","LIDER TURNO","ACTIVIDAD","GUARDADO","TOTAL","CUMPLE","NO CUMPLE","N/A","% CUMPLIM."];
+  for(var s=0;s<SECTIONS.length;s++){
+    var sec = SECTIONS[s];
+    for(var i=0;i<sec.items.length;i++){
+      hdr.push("["+sec.num+"."+(i+1)+"] "+sec.items[i].substring(0,30));
+      hdr.push("Observacion");
+      hdr.push("Fotos");
+    }
+  }
+  var rows = [hdr];
+  for(var r=0;r<recs.length;r++){
+    var rec = recs[r];
+    var vs = Object.keys(rec.items||{}).map(function(k){ return rec.items[k]; });
+    var ok = vs.filter(function(v){ return v&&v.status==="ok"; }).length;
+    var no = vs.filter(function(v){ return v&&v.status==="no"; }).length;
+    var na = vs.filter(function(v){ return v&&v.status==="na"; }).length;
+    var tot = 0;
+    for(var s2=0;s2<SECTIONS.length;s2++) tot += SECTIONS[s2].items.length;
+    var pct = (tot-na)>0 ? parseFloat(((ok/(tot-na))*100).toFixed(1)) : 0;
+    var base = [
+      rec.recID||rec.id.toString().slice(-6),
+      rec.fecha||"",rec.turno||"",rec.inspector||"",rec.labor||"",
+      rec.contratista||"",rec.guardia||"",rec.lider||"",rec.actividad||"",
+      new Date(rec.savedAt).toLocaleString("es-CO"),
+      tot,ok,no,na,pct
+    ];
+    var items = [];
+    for(var s3=0;s3<SECTIONS.length;s3++){
+      var sec3 = SECTIONS[s3];
+      for(var i3=0;i3<sec3.items.length;i3++){
+        var d = rec.items[sec3.id+"_"+i3];
+        var status = d?(d.status==="ok"?"CUMPLE":d.status==="no"?"NO CUMPLE":"N/A"):"PENDIENTE";
+        items.push(status,(d&&d.obs)?d.obs:"",(d&&d.photos)?d.photos.length:0);
+      }
+    }
+    rows.push(base.concat(items));
+  }
+  return rows;
+}
+
+// ── Exportar como CSV (100% offline, sin librerías externas) ──────────────
+function rowsToCSV(rows){
+  return rows.map(function(row){
+    return row.map(function(cell){
+      var v = String(cell===null||cell===undefined?"":cell);
+      // Escapar comillas y envolver en comillas si contiene coma, salto o comilla
+      if(v.indexOf(",")!==-1||v.indexOf("\n")!==-1||v.indexOf('"')!==-1){
+        v = '"'+v.replace(/"/g,'""')+'"';
+      }
+      return v;
+    }).join(",");
+  }).join("\r\n");
+}
+
+function downloadCSV(rows, filename){
+  var csv = "\uFEFF" + rowsToCSV(rows); // BOM para UTF-8 en Excel
+  var blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ── Intentar XLSX si SheetJS está disponible (online), si no CSV (offline) ──
+function exportOneXLS(id){
+  var rec = getRecords().filter(function(r){ return r.id===id; })[0];
+  if(!rec) return;
+  var rows = buildRows([rec]);
+  var base = "Inspeccion_"+(rec.fecha||"sf")+"_"+(rec.inspector||"").replace(/ /g,"_");
+  if(typeof XLSX !== "undefined"){
+    try{
+      var ws=XLSX.utils.aoa_to_sheet(rows);
+      ws["!cols"]=rows[0].map(function(_,ci){
+        return {wch:Math.min(Math.max(10,rows.reduce(function(m,r){return Math.max(m,String(r[ci]||"").length);},0))+2,45)};
+      });
+      var wb=XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb,ws,"Registros");
+      XLSX.writeFile(wb,base+".xlsx");
+      showToast("Excel descargado");
+      return;
+    }catch(e){ console.warn("XLSX falló, usando CSV:", e); }
+  }
+  // Fallback offline: CSV (se abre en Excel perfectamente)
+  downloadCSV(rows, base+".csv");
+  showToast("Descargado como CSV (abre en Excel)");
+}
+
+function exportAllXLS(){
+  var recs = getRecords();
+  if(!recs.length){ showToast("No hay registros", true); return; }
+  showLoading("Exportando "+recs.length+" registro(s)...");
+  setTimeout(function(){
+    try{
+      var rows = buildRows(recs);
+      var fname = "BD_Inspecciones_"+new Date().toISOString().split("T")[0];
+      if(typeof XLSX !== "undefined"){
+        try{
+          var ws=XLSX.utils.aoa_to_sheet(rows);
+          ws["!cols"]=rows[0].map(function(_,ci){
+            return {wch:Math.min(Math.max(10,rows.reduce(function(m,r){return Math.max(m,String(r[ci]||"").length);},0))+2,45)};
+          });
+          var wb=XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb,ws,"BD_Registros");
+          XLSX.writeFile(wb,fname+".xlsx");
+          showToast("Excel con "+recs.length+" registro(s) descargado");
+          hideLoading(); return;
+        }catch(e){ console.warn("XLSX falló, usando CSV:", e); }
+      }
+      // Offline fallback
+      downloadCSV(rows, fname+".csv");
+      showToast("CSV con "+recs.length+" registro(s) descargado — abrelo en Excel");
+    }catch(e){
+      console.error(e);
+      showToast("Error al exportar", true);
+    }
+    hideLoading();
+  }, 100);
+}
+
+// ── Cargar SheetJS de forma diferida solo si hay conexión ──────────────────
+(function loadXLSXifOnline(){
+  if(!navigator.onLine) return; // sin internet, no intentar
+  var s = document.createElement("script");
+  s.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+  s.onerror = function(){ console.log("SheetJS no disponible — modo CSV offline activo"); };
+  s.onload  = function(){ console.log("SheetJS cargado — exportacion Excel disponible"); };
+  document.head.appendChild(s);
+}());
+
+function switchTab(name){
+  var views = document.querySelectorAll(".view");
+  for(var i=0;i<views.length;i++) views[i].classList.remove("active");
+  var tabs = document.querySelectorAll(".tab");
+  for(var j=0;j<tabs.length;j++) tabs[j].classList.remove("active");
+  document.getElementById("view-" + name).classList.add("active");
+  var idx = (name==="form") ? 0 : (name==="records") ? 1 : 2;
+  tabs[idx].classList.add("active");
+  if(name==="records") renderRecords();
+  if(name==="config") renderLaborListPreview();
+  document.getElementById("counterBar").style.display = (name==="form") ? "flex" : "none";
+}
+function updateBadge(){
+  document.getElementById("recordCount").textContent = getRecords().length + " reg.";
+}
+function showToast(msg, err){
+  var t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "toast show" + (err ? " error" : "");
+  setTimeout(function(){ t.classList.remove("show"); }, 2800);
+}
+function showLoading(txt){
+  document.getElementById("loadingTxt").textContent = txt || "Procesando...";
+  document.getElementById("loadingOverlay").classList.add("show");
+}
+function hideLoading(){
+  document.getElementById("loadingOverlay").classList.remove("show");
+}
+function closeSetup(){
+  document.getElementById("setupOverlay").classList.remove("show");
+  localStorage.setItem("setupSeen", "3.1");
+}
+
+window.addEventListener("load", function(){
+  renderChecklist();
+  requestAnimationFrame(function(){
+    initSig("sigInspector");
+    initSig("sigLider");
+  });
+  document.getElementById("f-fecha").value = new Date().toISOString().split("T")[0];
+  generateID();
+  updateBadge();
+  updateMaestroTag();
+  // Mostrar setup si es primera vez O si se actualizó la app (nueva versión)
+  var APP_VERSION = "3.1";
+  if(localStorage.getItem("setupSeen") !== APP_VERSION){
+    document.getElementById("setupOverlay").classList.add("show");
+  }
+});
+window.addEventListener("resize", function(){
+  if(isSigEmpty("sigInspector")) initSig("sigInspector");
+  if(isSigEmpty("sigLider")) initSig("sigLider");
+});
+
+// ── Sincronización con Google Sheets ─────────────────────────────────────────
+var SHEETS_URL = "https://script.google.com/macros/s/AKfycbw7smmQqg_42-iBlkf_NGQvWStAnZCIkyLmnXKM7tZSaPv_4GXeT_6hCQ2uySNXmYTyew/exec";
+var SYNC_KEY   = "pendingSyncQueue";
+
+function getPendingQueue(){
+  try{ return JSON.parse(localStorage.getItem(SYNC_KEY) || "[]"); }
+  catch(e){ return []; }
+}
+function savePendingQueue(q){
+  try{ localStorage.setItem(SYNC_KEY, JSON.stringify(q)); }
+  catch(e){}
+}
+
+function buildSyncPayload(rec){
+  var vs = Object.keys(rec.items || {}).map(function(k){ return rec.items[k]; });
+  var ok = vs.filter(function(v){ return v && v.status==="ok"; }).length;
+  var no = vs.filter(function(v){ return v && v.status==="no"; }).length;
+  var na = vs.filter(function(v){ return v && v.status==="na"; }).length;
+  var tot = 0;
+  for(var s=0;s<SECTIONS.length;s++) tot += SECTIONS[s].items.length;
+  var pct = (tot-na)>0 ? parseFloat(((ok/(tot-na))*100).toFixed(1)) : 0;
+
+  // Hallazgos NC
+  var hallazgos = [];
+  for(var si=0;si<SECTIONS.length;si++){
+    var sec = SECTIONS[si];
+    for(var ii=0;ii<sec.items.length;ii++){
+      var d = rec.items[sec.id+"_"+ii];
+      if(d && d.status==="no"){
+        hallazgos.push({
+          seccion:    sec.num+". "+sec.title,
+          estandar:   sec.items[ii],
+          observacion: d.obs || "",
+          fotoBase64: (d.photos && d.photos[0]) ? d.photos[0] : ""
+        });
+      }
+    }
+  }
+
+  return {
+    recID:        rec.recID || rec.id.toString().slice(-6),
+    fecha:        rec.fecha || "",
+    turno:        rec.turno || "",
+    inspector:    rec.inspector || "",
+    contratista:  rec.contratista || "",
+    guardia:      rec.guardia || "",
+    lider:        rec.lider || "",
+    actividad:    rec.actividad || "",
+    labor:        rec.labor || "",
+    savedAt:      rec.savedAt || new Date().toISOString(),
+    total:        tot,
+    cumple:       ok,
+    noCumple:     no,
+    na:           na,
+    pct:          pct,
+    hallazgos:    hallazgos,
+    sigInspector: rec.sigInspector || "",
+    sigLider:     rec.sigLider     || ""
+  };
+}
+
+function syncToSheets(rec, onSuccess, onError){
+  if(!navigator.onLine){
+    // Sin conexion: guardar en cola pendiente
+    var q = getPendingQueue();
+    q.push(buildSyncPayload(rec));
+    savePendingQueue(q);
+    if(onError) onError("offline");
+    return;
+  }
+  var payload = buildSyncPayload(rec);
+  fetch(SHEETS_URL, {
+    method: "POST",
+    mode:   "no-cors",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify(payload)
+  }).then(function(){
+    if(onSuccess) onSuccess();
+  }).catch(function(err){
+    // Guardar en cola para reintentar
+    var q = getPendingQueue();
+    q.push(payload);
+    savePendingQueue(q);
+    if(onError) onError(err);
+  });
+}
+
+function syncPendingQueue(){
+  if(!navigator.onLine) return;
+  var q = getPendingQueue();
+  if(!q.length) return;
+  var remaining = [];
+  var sent = 0;
+  q.forEach(function(payload){
+    fetch(SHEETS_URL, {
+      method: "POST",
+      mode:   "no-cors",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(payload)
+    }).then(function(){
+      sent++;
+      if(sent > 0) showToast(sent + " registro(s) sincronizado(s) con Google Sheets");
+    }).catch(function(){
+      remaining.push(payload);
+    });
+  });
+  savePendingQueue(remaining);
+}
+
+// Al recuperar conexion: sincronizar cola pendiente automaticamente
+window.addEventListener("online", function(){
+  setTimeout(syncPendingQueue, 2000);
+});
+
+// Intentar sincronizar al cargar si hay pendientes
+window.addEventListener("load", function(){
+  setTimeout(function(){
+    if(navigator.onLine && getPendingQueue().length > 0){
+      syncPendingQueue();
+    }
+  }, 3000);
+});
+
+</script>
+</body>
+</html>
