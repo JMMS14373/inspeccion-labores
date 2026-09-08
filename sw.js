@@ -3,9 +3,9 @@
 
 var CACHE_NAME = "inspeccion-labores-v3.4";
 var APP_SHELL = [
-  "/inspeccion-labores/",
-  "/inspeccion-labores/index.html",
-  "/inspeccion-labores/manifest.json"
+  "/",
+  "/index.html",
+  "/manifest.json"
 ];
 
 // Instalacion: cachear shell de la app
@@ -68,8 +68,8 @@ self.addEventListener("fetch", function(e){
       return caches.match(e.request).then(function(cached){
         if(cached) return cached;
         // Fallback a index.html para rutas de la app
-        return caches.match("/inspeccion-labores/") ||
-               caches.match("/inspeccion-labores/index.html");
+        return caches.match("/") ||
+               caches.match("/index.html");
       });
     })
   );
