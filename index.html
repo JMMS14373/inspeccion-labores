@@ -348,7 +348,7 @@ window.addEventListener("load", function(){
       <div class="field full">
         <label>Actividad / 活动 <span class="lbl-m">MAESTRO</span></label>
         <div class="select-wrap">
-          <select id="f-actividad">
+          <select id="f-actividad" onchange="onActividadChange()">
         <option value="">-- Actividad --</option>
         <option value="Balastreo">Balastreo</option>
         <option value="Bombeo auxiliar">Bombeo auxiliar</option>
@@ -405,8 +405,15 @@ window.addEventListener("load", function(){
         <option value="Frente parado por decisiones técnicas">Frente parado por decisiones técnicas</option>
         <option value="La labor pasa a fase de explotación">La labor pasa a fase de explotación</option>
         </optgroup>
+        <option value="__otra__">✎ Otra actividad (escribir) / 其他活动（手写）</option>
           </select>
         </div>
+        <input id="f-actividad-otra" type="text" maxlength="60" autocomplete="off"
+          placeholder="Escribe la actividad / 请输入活动名称"
+          style="display:none;margin-top:6px;width:100%;box-sizing:border-box;padding:10px;border-radius:8px;border:1px solid var(--c-border);background:var(--c-card);color:var(--c-text,#fff);font-size:14px">
+        <input id="f-actividad-motivo" type="text" maxlength="80" autocomplete="off"
+          placeholder="Motivo de Sin actividad (obligatorio) / 无活动原因（必填）"
+          style="display:none;margin-top:6px;width:100%;box-sizing:border-box;padding:10px;border-radius:8px;border:1px solid var(--c-border);background:var(--c-card);color:var(--c-text,#fff);font-size:14px">
       </div>
       <div class="field full">
         <label>Labor / 工作面 <span class="lbl-s">SEMANAL</span></label>
@@ -1390,6 +1397,132 @@ function updateCounters(){
 
 function addPhoto(id){ addPhotoItem(id, 1, false); }
 
+// ---- Actividad del encabezado: obligatoria; se elige de la lista o se escribe ("Otra actividad") ----
+function escHtmlAct(t){ return String(t||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function onActividadChange(){
+  var v = document.getElementById("f-actividad").value;
+  var o = document.getElementById("f-actividad-otra");
+  var m = document.getElementById("f-actividad-motivo");
+  o.style.display = (v === "__otra__") ? "block" : "none";
+  m.style.display = (v === "Sin actividad") ? "block" : "none";
+  if(v !== "__otra__") o.value = "";
+  if(v !== "Sin actividad") m.value = "";
+  if(v === "__otra__") o.focus();
+  if(v === "Sin actividad") m.focus();
+}
+function getActividadValor(){
+  var v = document.getElementById("f-actividad").value;
+  if(v === "__otra__") return document.getElementById("f-actividad-otra").value.replace(/\s+/g," ").trim();
+  return v;
+}
+function getActividadMotivo(){
+  if(document.getElementById("f-actividad").value !== "Sin actividad") return "";
+  return document.getElementById("f-actividad-motivo").value.replace(/\s+/g," ").trim();
+}
+// Devuelve true (y muestra alarma bloqueante) si falta la actividad, el texto de "Otra" o el motivo de "Sin actividad".
+function bloquearActividad(){
+  var v = document.getElementById("f-actividad").value;
+  var es = "", zh = "", foco = "f-actividad";
+  if(!v){
+    es = "Debes seleccionar la <b>actividad</b> de la inspección (o elegir “Otra actividad” y escribirla).";
+    zh = "必须选择本次检查的活动（或选择“其他活动”并手写）。";
+  } else if(v === "__otra__" && getActividadValor().length < 3){
+    es = "Elegiste <b>Otra actividad</b>: escribe cuál es la actividad realizada.";
+    zh = "您选择了“其他活动”：请写明具体活动。";
+    foco = "f-actividad-otra";
+  } else if(v === "Sin actividad" && getActividadMotivo().length < 3){
+    es = "Elegiste <b>Sin actividad</b>: escribe el motivo (por ejemplo: sin acceso, sin personal, pendiente de equipo).";
+    zh = "您选择了“无活动”：请写明原因（如：无法进入、无人员、等待设备）。";
+    foco = "f-actividad-motivo";
+  } else return false;
+  var prev = document.getElementById("alarmaActividad");
+  if(prev) prev.parentNode.removeChild(prev);
+  var ov = document.createElement("div");
+  ov.id = "alarmaActividad";
+  ov.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box";
+  ov.innerHTML = '<div style="background:var(--c-card);border:2px solid #e53935;border-radius:12px;padding:20px;width:100%;max-width:400px">'
+    + '<div style="color:#ff5252;font-size:16px;font-weight:700;margin-bottom:8px">⚠ NO SE PUEDE GUARDAR / 无法保存</div>'
+    + '<div style="color:var(--c-text,#fff);font-size:13px;margin-bottom:6px">' + es + '</div>'
+    + '<div style="color:var(--c-muted);font-size:12px;margin-bottom:14px">' + zh + '</div>'
+    + '<button id="alarmaActOk" style="width:100%;background:#e53935;color:#fff;border:none;padding:12px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">Completar / 去填写</button>'
+    + '</div>';
+  document.body.appendChild(ov);
+  document.getElementById("alarmaActOk").onclick = function(){
+    ov.parentNode.removeChild(ov);
+    var el = document.getElementById(foco);
+    if(el){ try{ el.scrollIntoView({block:"center"}); }catch(e){} try{ el.focus(); }catch(e){} }
+  };
+  return true;
+}
+
+// Lado mínimo (px) que debe tener una foto para aceptarse como evidencia.
+// Las fotos normales de la app miden 360x480; las miniaturas problemáticas miden ~51x68.
+var FOTO_MIN_LADO = 200;
+
+// Regla: todo ítem "No cumple" debe tener evidencia fotográfica. Si falta alguna, no se
+// guarda ni se genera el PDF hasta cargarla. Devuelve true si el guardado queda bloqueado.
+function bloquearNCSinFoto(){
+  var faltan = [];
+  for(var sv=0; sv<SECTIONS.length; sv++){
+    var secv = SECTIONS[sv];
+    for(var iv=0; iv<secv.items.length; iv++){
+      var iidv = secv.id + "_" + iv;
+      var dv = formData[iidv];
+      if(dv && dv.status === "no" && (!dv.photos || dv.photos.length === 0)){
+        faltan.push({num: secv.num + "." + (iv+1), nombre: obtenerNombreItem(iidv)});
+      }
+    }
+  }
+  if(!faltan.length) return false;
+  var prev = document.getElementById("alarmaNCSinFoto");
+  if(prev) prev.parentNode.removeChild(prev);
+  var lista = "";
+  for(var k=0; k<faltan.length && k<8; k++){
+    lista += '<div style="font-size:12px;color:var(--c-text,#fff);padding:2px 0">• ' + faltan[k].num + ' — ' + faltan[k].nombre + '</div>';
+  }
+  if(faltan.length > 8) lista += '<div style="font-size:12px;color:var(--c-muted);padding:2px 0">… y ' + (faltan.length-8) + ' más / 还有 ' + (faltan.length-8) + ' 项</div>';
+  var ov = document.createElement("div");
+  ov.id = "alarmaNCSinFoto";
+  ov.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box";
+  ov.innerHTML = '<div style="background:var(--c-card);border:2px solid #e53935;border-radius:12px;padding:20px;width:100%;max-width:400px;max-height:90%;overflow:auto">'
+    + '<div style="color:#ff5252;font-size:16px;font-weight:700;margin-bottom:8px">⚠ NO SE PUEDE GUARDAR / 无法保存</div>'
+    + '<div style="color:var(--c-text,#fff);font-size:13px;margin-bottom:6px">Todo hallazgo <b>NO CUMPLE</b> debe tener evidencia fotográfica. Faltan fotos en ' + faltan.length + ' ítem(s):</div>'
+    + '<div style="color:var(--c-muted);font-size:12px;margin-bottom:10px">每个“不合格”项必须有照片证据。以下 ' + faltan.length + ' 项缺少照片：</div>'
+    + '<div style="margin-bottom:14px">' + lista + '</div>'
+    + '<button id="alarmaNCOk" style="width:100%;background:#e53935;color:#fff;border:none;padding:12px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">Cargar las fotos / 上传照片</button>'
+    + '</div>';
+  document.body.appendChild(ov);
+  document.getElementById("alarmaNCOk").onclick = function(){ ov.parentNode.removeChild(ov); };
+  return true;
+}
+
+// Alarma bloqueante: no se puede continuar hasta cargar de nuevo la evidencia.
+function alarmaFotoBajaResolucion(id, maxFotos, w, h){
+  var prev = document.getElementById("alarmaFotoDebil");
+  if(prev) prev.parentNode.removeChild(prev);
+  var itemNum = obtenerNumeroItem(id);
+  var itemNombre = obtenerNombreItem(id);
+  var ov = document.createElement("div");
+  ov.id = "alarmaFotoDebil";
+  ov.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box";
+  ov.innerHTML = '<div style="background:var(--c-card);border:2px solid #e53935;border-radius:12px;padding:20px;width:100%;max-width:400px">'
+    + '<div style="color:#ff5252;font-size:16px;font-weight:700;margin-bottom:8px">⚠ FOTO NO VÁLIDA / 照片无效</div>'
+    + '<div style="color:var(--c-text,#fff);font-size:13px;margin-bottom:8px">Ítem #' + itemNum + ': ' + itemNombre + '</div>'
+    + '<div style="color:var(--c-text,#fff);font-size:13px;margin-bottom:6px">La foto es muy pequeña (' + w + 'x' + h + ' px) y no sirve como evidencia. <b>Debes cargar nuevamente la evidencia.</b></div>'
+    + '<div style="color:var(--c-muted);font-size:12px;margin-bottom:14px">照片太小（' + w + 'x' + h + ' 像素），不能作为证据。<b>必须重新上传证据。</b></div>'
+    + '<div style="color:var(--c-muted);font-size:11px;margin-bottom:14px">Toma la foto con la cámara, con buena luz y enfocando el hallazgo. / 请用相机拍照，光线充足，对准发现的问题。</div>'
+    + '<button id="alarmaFotoCam" style="width:100%;background:#e53935;color:#fff;border:none;padding:12px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px">📷 Tomar foto de nuevo / 重新拍照</button>'
+    + '<button id="alarmaFotoGal" style="width:100%;background:var(--c-section);color:var(--c-muted);border:1px solid var(--c-border);padding:10px;border-radius:8px;font-size:12px;cursor:pointer">🖼 Elegir otra de la galería / 从相册选择其他照片</button>'
+    + '</div>';
+  document.body.appendChild(ov);
+  document.getElementById("alarmaFotoCam").onclick = function(){
+    ov.parentNode.removeChild(ov); addPhotoItem(id, maxFotos, false);
+  };
+  document.getElementById("alarmaFotoGal").onclick = function(){
+    ov.parentNode.removeChild(ov); addPhotoItem(id, maxFotos, true);
+  };
+}
+
 function addPhotoItem(id, maxFotos, fromGallery){
   maxFotos = maxFotos || 1;
   var actual = (photos[id] || []).length;
@@ -1410,6 +1543,13 @@ function addPhotoItem(id, maxFotos, fromGallery){
       reader.onload = function(e){
         var img = new Image();
         img.onload = function(){
+          // ── ALARMA BLOQUEANTE: foto de baja resolución ─────────────
+          // La app nunca amplía una foto: si la imagen llega con menos de FOTO_MIN_LADO px
+          // por lado, así quedará en el registro y el PDF. No se acepta; se obliga a repetirla.
+          if(Math.min(img.width, img.height) < FOTO_MIN_LADO){
+            alarmaFotoBajaResolucion(id, maxFotos, img.width, img.height);
+            return;
+          }
           var canvas = document.createElement("canvas");
           var MAX = 480;
           var w = img.width, h = img.height;
@@ -1650,9 +1790,8 @@ function saveRecord(){
     showToast("Falta observacion en NC: " + ncSinObs.slice(0,3).join(", ") + (ncSinObs.length>3?" y "+(ncSinObs.length-3)+" mas":""), true);
     return;
   }
-  if(ncSinFoto.length > 0){
-    if(!confirm("Faltan fotos en " + ncSinFoto.length + " hallazgo(s) NC:\n" + ncSinFoto.slice(0,5).join(", ") + "\n\n¿Guardar sin fotos?")) return;
-  }
+  if(bloquearActividad()) return;   // la actividad del encabezado es obligatoria
+  if(bloquearNCSinFoto()) return;   // todo "No cumple" debe tener evidencia fotográfica
 
   if(isSigEmpty("sigInspector") || isSigEmpty("sigLider")){
     var faltan = [];
@@ -1666,7 +1805,8 @@ function saveRecord(){
     savedAt: new Date().toISOString(),
     fecha: fecha,
     turno: document.getElementById("f-turno").value,
-    actividad: document.getElementById("f-actividad").value,
+    actividad: getActividadValor(),
+    actividadMotivo: getActividadMotivo(),
     inspector: inspector,
     labor: labor,
     contratista: document.getElementById("f-contratista").value,
@@ -1713,6 +1853,8 @@ function saveAndDownloadPDF(){
   if(!fecha){ showToast("Selecciona la fecha", true); return; }
   if(!inspector){ showToast("Selecciona el inspector", true); return; }
   if(!labor){ showToast("Selecciona la labor", true); return; }
+  if(bloquearActividad()) return;   // la actividad del encabezado es obligatoria
+  if(bloquearNCSinFoto()) return;   // todo "No cumple" debe tener evidencia fotográfica
   if(isSigEmpty("sigInspector") || isSigEmpty("sigLider")){
     var faltan = [];
     if(isSigEmpty("sigInspector")) faltan.push("Inspector");
@@ -1726,7 +1868,8 @@ function saveAndDownloadPDF(){
     savedAt: new Date().toISOString(),
     fecha: fecha,
     turno: document.getElementById("f-turno").value,
-    actividad: document.getElementById("f-actividad").value,
+    actividad: getActividadValor(),
+    actividadMotivo: getActividadMotivo(),
     inspector: inspector,
     labor: labor,
     contratista: document.getElementById("f-contratista").value,
@@ -1849,7 +1992,9 @@ function downloadPDFDirect(rec){
   doc += "<div class=\"labor-row\"><span class=\"dato-lbl\">Labor / Actividad</span><br>";
   doc += "<span class=\"labor-val\">" + (rec.labor||"-") + "</span>";
   doc += "<span style=\"margin:0 8px;color:#8a9ab0\">|</span>";
-  doc += "<span style=\"color:#e8ecef;font-size:8.5pt\">" + (rec.actividad||"-") + "</span></div>";
+  doc += "<span style=\"color:#e8ecef;font-size:8.5pt\">" + escHtmlAct(rec.actividad||"-") + "</span>";
+  if(rec.actividadMotivo) doc += "<div style=\"font-size:8pt;color:#c8d3de;margin-top:2px\">Motivo: " + escHtmlAct(rec.actividadMotivo) + "</div>";
+  doc += "</div>";
   doc += "<div class=\"datos-grid\">";
   doc += "<div><div class=\"dato-lbl\">Fecha</div><div class=\"dato-val\">" + (rec.fecha||"-") + "</div></div>";
   doc += "<div><div class=\"dato-lbl\">Turno</div><div class=\"dato-val\">" + (rec.turno||"-") + "</div></div>";
@@ -1895,6 +2040,9 @@ function resetForm(){
   ["f-fecha","f-actividad","f-inspector","f-contratista","f-semana","f-guardia","f-lider","f-turno"].forEach(function(id){
     document.getElementById(id).value = "";
   });
+  document.getElementById("f-actividad-otra").value = "";
+  document.getElementById("f-actividad-motivo").value = "";
+  onActividadChange();
   document.getElementById("f-labor").value = "";
   var ls = document.getElementById("laborSearch");
   ls.value = "";
@@ -2252,7 +2400,7 @@ function viewDetail(id){
   html += "<div><b>Inspector:</b> " + (rec.inspector||"-") + "</div><div><b>Guardia:</b> " + (rec.guardia||"-") + "</div>";
   html += "<div style=\"grid-column:1/-1\"><b>Labor:</b> <span style=\"color:#4fc3f7;font-family:monospace;font-size:13px\">" + (rec.labor||"-") + "</span></div>";
   html += "<div><b>Contratista:</b> " + (rec.contratista||"-") + "</div><div><b>Lider:</b> " + (rec.lider||"-") + "</div>";
-  html += "<div style=\"grid-column:1/-1\"><b>Actividad:</b> " + (rec.actividad||"-") + "</div>";
+  html += "<div style=\"grid-column:1/-1\"><b>Actividad:</b> " + escHtmlAct(rec.actividad||"-") + (rec.actividadMotivo ? " — <i>" + escHtmlAct(rec.actividadMotivo) + "</i>" : "") + "</div>";
   html += "</div></div>";
 
   for(var s=0;s<SECTIONS.length;s++){
@@ -2405,7 +2553,9 @@ function exportPDF(id){
   doc += "<div class=\"labor-row\"><span class=\"dato-lbl\">Labor / Actividad:</span><br>";
   doc += "<span class=\"labor-val\">" + (rec.labor||"-") + "</span>";
   doc += "<span style=\"margin-left:10px;color:#8a9ab0\">|</span>";
-  doc += "<span style=\"margin-left:10px\" class=\"act-val\">" + (rec.actividad||"-") + "</span></div>";
+  doc += "<span style=\"margin-left:10px\" class=\"act-val\">" + escHtmlAct(rec.actividad||"-") + "</span>";
+  if(rec.actividadMotivo) doc += "<div style=\"font-size:8pt;color:#c8d3de;margin-top:2px\">Motivo: " + escHtmlAct(rec.actividadMotivo) + "</div>";
+  doc += "</div>";
   doc += "<div class=\"datos-grid\">";
   doc += "<div><div class=\"dato-lbl\">Fecha</div><div class=\"dato-val\">" + (rec.fecha||"-") + "</div></div>";
   doc += "<div><div class=\"dato-lbl\">Turno</div><div class=\"dato-val\">" + (rec.turno||"-") + "</div></div>";
