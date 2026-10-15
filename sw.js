@@ -1,7 +1,7 @@
-// Service Worker — Inspeccion de Labores v3.2
+// Service Worker — Inspeccion de Labores v4.0 (actualizacion forzada)
 // Optimizado para iOS Safari y Android Chrome
 
-var CACHE_NAME = "inspeccion-labores-v3.8";
+var CACHE_NAME = "inspeccion-labores-v4.0";
 var APP_SHELL = [
   "/inspeccion-labores/",
   "/inspeccion-labores/index.html",
@@ -54,7 +54,7 @@ self.addEventListener("fetch", function(e){
 
   // Para la app local: Network First con fallback a cache
   e.respondWith(
-    fetch(e.request).then(function(response){
+    fetch(e.request, {cache: "no-store"}).then(function(response){
       // Si la respuesta es buena, actualizamos el cache
       if(response && response.status === 200 && response.type === "basic"){
         var responseClone = response.clone();

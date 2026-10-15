@@ -175,39 +175,98 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%230F1923'/%3E%3Ctext y='.9em' font-size='80' x='10'%3E%E2%9B%8F%3C/text%3E%3C/svg%3E">
 <script>
-if("serviceWorker" in navigator){
-  // Actualizar hora atmósfera cuando se hace foco en ese campo
-document.addEventListener("focusin", function(e){
-  if(e.target && e.target.id === "obs-sec4_1"){
-    actualizarPlaceholderAtmosfera();
-  }
-});
+// ── ACTUALIZACIÓN FORZADA DE LA APP ───────────────────────────────────────────
+// APP_BUILD debe coincidir con CACHE_NAME de sw.js. Al subir una versión nueva se cambian los dos.
+var APP_BUILD = "4.0";
+(function(){
+  if(!("serviceWorker" in navigator)) return;
+  var BASE = "/inspeccion-labores/";
+  var recargando = false, pendiente = false;
+  var teniaControl = !!navigator.serviceWorker.controller;   // en la primera instalacion no hay que recargar
 
-window.addEventListener("load", function(){
-    navigator.serviceWorker.register("/inspeccion-labores/sw.js", {scope: "/inspeccion-labores/"})
+  // ¿Hay un registro a medio llenar? (no se recarga encima del trabajo del inspector)
+  function ocupado(){
+    try{
+      for(var k in photos){ if(photos[k] && photos[k].length) return true; }
+      for(var j in formData){ if(formData[j] && formData[j].status) return true; }
+      var lab = document.getElementById("f-labor");
+      if(lab && lab.value) return true;
+    }catch(e){}
+    return false;
+  }
+
+  function banner(){
+    if(document.getElementById("bannerUpd")) return;
+    var d = document.createElement("div");
+    d.id = "bannerUpd";
+    d.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#F5A623;color:#000;padding:10px 12px;font:600 13px Arial,sans-serif;display:flex;gap:10px;align-items:center;justify-content:space-between";
+    d.innerHTML = '<span>Nueva versión disponible. Guarda tu registro y toca Actualizar.<br><small>有新版本。请先保存记录，然后点击更新。</small></span>'
+      + '<button id="bannerUpdBtn" style="background:#000;color:#fff;border:none;border-radius:8px;padding:10px 14px;font-weight:700">Actualizar / 更新</button>';
+    document.body.appendChild(d);
+    document.getElementById("bannerUpdBtn").onclick = function(){ recargarLimpio(null, true); };
+  }
+
+  // Borra cachés y service worker viejos y recarga con una URL nueva (esquiva el caché HTTP)
+  function recargarLimpio(version, forzar, soloRecargar){
+    if(recargando) return;
+    if(!forzar && ocupado()){ pendiente = true; banner(); return; }
+    recargando = true;
+    var p = [];
+    if(!soloRecargar){
+    try{ if(window.caches) p.push(caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); })); }catch(e){}
+    try{ p.push(navigator.serviceWorker.getRegistrations().then(function(rs){ return Promise.all(rs.map(function(r){ return r.unregister(); })); })); }catch(e){}
+    }
+    var ir = function(){ location.replace(BASE + "?v=" + (version || APP_BUILD) + "&t=" + Date.now()); };
+    Promise.all(p).then(ir, ir);
+  }
+
+  // Compara la versión instalada con la publicada (sin usar ningún caché)
+  function verificarVersion(){
+    if(recargando || !navigator.onLine) return;
+    fetch(BASE + "index.html?_=" + Date.now(), {cache:"no-store"})
+      .then(function(r){ return r.ok ? r.text() : ""; })
+      .then(function(t){
+        var m = /var APP_BUILD = "([^"]+)"/.exec(t);
+        if(m && m[1] !== APP_BUILD){
+          // tope de seguridad: máximo 3 intentos por sesión para no entrar en bucle
+          var n = 0; try{ n = parseInt(sessionStorage.getItem("updTry")||"0",10); sessionStorage.setItem("updTry", String(n+1)); }catch(e){}
+          if(n < 3) recargarLimpio(m[1], false);
+        } else { try{ sessionStorage.removeItem("updTry"); }catch(e){} }
+      }).catch(function(){});
+  }
+
+  window.addEventListener("load", function(){
+    navigator.serviceWorker.register(BASE + "sw.js", {scope: BASE, updateViaCache: "none"})
       .then(function(reg){
-        console.log("SW registrado OK:", reg.scope);
-        // Verificar actualizaciones
+        function revisar(){ try{ reg.update(); }catch(e){} verificarVersion(); }
         reg.addEventListener("updatefound", function(){
-          var newSW = reg.installing;
-          newSW.addEventListener("statechange", function(){
-            if(newSW.state === "installed" && navigator.serviceWorker.controller){
-              newSW.postMessage({action: "skipWaiting"});
+          var nw = reg.installing;
+          if(!nw) return;
+          nw.addEventListener("statechange", function(){
+            if(nw.state === "installed" && navigator.serviceWorker.controller){
+              nw.postMessage({action: "skipWaiting"});
             }
           });
         });
+        revisar();
+        document.addEventListener("visibilitychange", function(){ if(document.visibilityState === "visible") revisar(); });
+        window.addEventListener("online", revisar);
+        setInterval(revisar, 5 * 60 * 1000);
       })
       .catch(function(err){ console.log("SW error:", err); });
 
-    // Al recuperar conexion tras offline: recargar suavemente
+    // Un service worker nuevo tomó el control: recargar cuando no haya un registro en curso
     navigator.serviceWorker.addEventListener("controllerchange", function(){
-      if(!window._swReloading){
-        window._swReloading = true;
-        window.location.reload();
-      }
+      if(!teniaControl) return;
+      if(!ocupado()) recargarLimpio(null, true, true); else { pendiente = true; banner(); }
     });
+    // Si había un registro en curso y ya se guardó/limpió, aplicar la actualización pendiente
+    setInterval(function(){ if(pendiente && !ocupado()) recargarLimpio(null, true, false); }, 10000);
+
+    var tag = document.getElementById("appBuildTag");
+    if(tag) tag.textContent = "v" + APP_BUILD;
   });
-}
+})();
 </script>
 </head>
 <body>
@@ -265,6 +324,7 @@ window.addEventListener("load", function(){
     <div class="form-title">
       Datos Generales / 基本信息
       <span class="maestro-tag" id="maestroTag">Maestro original</span>
+      <span id="appBuildTag" style="font-size:10px;color:var(--c-muted);margin-left:6px"></span>
     </div>
 
     <div class="id-box">
@@ -396,7 +456,7 @@ window.addEventListener("load", function(){
         <option value="SoporteTipo III">SoporteTipo III</option>
         <option value="Vaceado de losa">Vaceado de losa</option>
         <option value="Ventilación">Ventilación</option>
-        <optgroup label="— Labor no realizada —">
+        <optgroup label="— Labor no inspeccionada —">
         <option value="Parado por geología">Parado por geología</option>
         <option value="Sin acceso por carga acumulada">Sin acceso por carga acumulada</option>
         <option value="La labor está inundada">La labor está inundada</option>
