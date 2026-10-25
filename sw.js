@@ -1,7 +1,7 @@
 // Service Worker — Inspeccion de Labores v4.3 (actualizacion forzada sin perder el registro en curso)
 // Optimizado para iOS Safari y Android Chrome
 
-var CACHE_NAME = "inspeccion-labores-v4.3";
+var CACHE_NAME = "inspeccion-labores-v4.4";
 var APP_SHELL = [
   "/inspeccion-labores/",
   "/inspeccion-labores/index.html",

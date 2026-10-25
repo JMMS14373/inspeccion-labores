@@ -1399,7 +1399,7 @@ function downloadPDFDirect(rec){
   doc += "@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-bar{display:none}}";
   doc += "<\/style>\n<\/head><body>";
   doc += "<div class=\"print-bar\">";
-  doc += "<button class=\"btn-p\" onclick=\"window.print()\">Imprimir / Guardar como PDF</button>";
+  doc += "<button class=\"btn-p\" onclick=\"imprimirListo(this)\">Imprimir / Guardar como PDF</button>";
   doc += "<span class=\"hint\">Elige Imprimir y selecciona Guardar como PDF. Guardalo en la carpeta InspeccionLabores</span>";
   doc += "</div>";
   doc += "<div class=\"header\"><div><h1>INFORME DE INSPECCION DE LABORES / 巷道检查</h1><p>Inspector de Proyectos</p></div>";
@@ -1435,6 +1435,7 @@ function downloadPDFDirect(rec){
   doc += "<div class=\"firma-box\"><div class=\"firma-lbl\">Firma Lider de Turno</div>" + firmaLid + "<div class=\"firma-nombre\">" + (rec.lider||"-") + "</div></div>";
   doc += "</div>";
   doc += "<div class=\"pie\"><span>" + idDisp + " | " + (rec.labor||"") + " | " + (rec.fecha||"") + " | " + (rec.inspector||"") + "</span><span>Inspeccion de Labores | App v" + APP_BUILD + "</span></div>";
+  doc += "<script>" + PRINT_LISTO_JS + "<\/script>";
   doc += "<\/body><\/html>";
 
   // Descarga directa como archivo .html
@@ -1861,6 +1862,15 @@ function closeDetail(){
   document.getElementById("detailOverlay").classList.remove("open");
 }
 
+// v4.4: antes de imprimir, esperar a que TODAS las fotos estén decodificadas.
+// En iPhone/Safari, si se imprime antes de terminar de decodificar, algunas fotos salen
+// incrustadas en el PDF a ~51x68 px y el agente las descarta (<100 px).
+var PRINT_LISTO_JS = "function imprimirListo(btn){var t=btn.textContent;btn.disabled=true;btn.textContent='Preparando fotos...';" +
+  "var ps=[].slice.call(document.images).map(function(im){try{im.decoding='sync';}catch(e){}" +
+  "return (im.decode?im.decode():Promise.resolve()).catch(function(){});});" +
+  "Promise.all(ps).then(function(){return new Promise(function(r){setTimeout(r,800);});})" +
+  ".then(function(){btn.disabled=false;btn.textContent=t;window.print();});}";
+
 function exportPDF(id){
   var rec = getRecords().filter(function(r){ return r.id === id; })[0];
   if(!rec){ showToast("Registro no encontrado", true); return; }
@@ -1955,7 +1965,7 @@ function exportPDF(id){
   doc += "<\/style>\n<\/head><body>";
 
   doc += "<div class=\"print-bar no-print\">";
-  doc += "<button class=\"btn-print\" onclick=\"window.print()\">Imprimir o Guardar como PDF</button>";
+  doc += "<button class=\"btn-print\" onclick=\"imprimirListo(this)\">Imprimir o Guardar como PDF</button>";
   doc += "<button class=\"btn-close\" onclick=\"window.close()\">Cerrar</button>";
   doc += "<span class=\"print-hint\">Usa Imprimir y elige Guardar como PDF, luego guardalo en tu carpeta InspeccionLabores</span>";
   doc += "</div>";
@@ -1998,6 +2008,7 @@ function exportPDF(id){
   doc += "</div>";
 
   doc += "<div class=\"pie\"><span>" + idDisp + " | " + (rec.labor||"") + " | " + (rec.fecha||"") + " | " + (rec.inspector||"") + "</span><span>Inspeccion de Labores | App v" + APP_BUILD + "</span></div>";
+  doc += "<script>" + PRINT_LISTO_JS + "<\/script>";
   doc += "<\/body><\/html>";
 
   var win = window.open("", "_blank");
