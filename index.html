@@ -19,7 +19,7 @@
 <script>
 // ── ACTUALIZACIÓN FORZADA DE LA APP ───────────────────────────────────────────
 // APP_BUILD debe coincidir con CACHE_NAME de sw.js. Al subir una versión nueva se cambian los dos.
-var APP_BUILD = "4.4";
+var APP_BUILD = "4.5";
 (function(){
   if(!("serviceWorker" in navigator)) return;
   var BASE = "/inspeccion-labores/";
@@ -227,12 +227,8 @@ var APP_BUILD = "4.4";
         <div class="select-wrap">
           <select id="f-semana">
         <option value="">-- Semana --</option>
-        <option value="1">Semana 1 (26 Sep - 02 Oct)</option>
-        <option value="2">Semana 2 (03 Oct - 09 Oct)</option>
-        <option value="3">Semana 3 (10 Oct - 16 Oct)</option>
-        <option value="4">Semana 4 (17 Oct - 23 Oct)</option>
-        <option value="5">Semana 5 (24 Oct - 25 Oct)</option>
-          </select>
+        </select>
+          <div id="cicloInfo" style="font-size:11px;color:var(--c-muted);margin-top:4px"></div>
         </div>
       </div>
       <div class="field">

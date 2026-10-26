@@ -138,8 +138,127 @@ function validarFormatoLabor(val){
   return LABOR_REGEX.test(val.trim());
 }
 
+
+// ===== CICLOS Y SEMANAS (v4.5): se leen del Maestro (tblCiclos / tblConfig), nada va fijo =====
+var CICLOS_MAESTRO = [];      // [{mes:"November", anio:2026, mesNum:11, ini:Date, fin:Date}]
+var CONFIG_MAESTRO = {mesesAtras:3, actualizadoPor:"", fechaAct:null};
+var MESES_EN = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+var MESES_ABR = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+
+function fechaMaestro(v){
+  if(v == null || v === "") return null;
+  var d = null;
+  if(v instanceof Date) d = v;
+  else if(typeof v === "number") d = new Date(Date.UTC(1899,11,30) + Math.round(v)*86400000);
+  else {
+    var t = String(v).trim(), m;
+    if((m = /^(\d{4})-(\d{2})-(\d{2})/.exec(t))) d = new Date(Date.UTC(+m[1], +m[2]-1, +m[3]));
+    else if((m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(t))) d = new Date(Date.UTC(+m[3], +m[2]-1, +m[1]));
+  }
+  if(!d || isNaN(d.getTime())) return null;
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));  // solo fecha, sin hora
+}
+function sumaDias(d, n){ return new Date(d.getTime() + n*86400000); }
+function fmtCorta(d){ return ("0"+d.getUTCDate()).slice(-2) + " " + MESES_ABR[d.getUTCMonth()]; }
+function fmtFecha(d){ return ("0"+d.getUTCDate()).slice(-2) + "/" + ("0"+(d.getUTCMonth()+1)).slice(-2) + "/" + d.getUTCFullYear(); }
+function hoyFecha(){ var n = new Date(); return new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate())); }
+
+// Lee tblCiclos y tblConfig del Maestro por encabezado (sin posiciones fijas).
+function leerCiclosMaestro(data){
+  var head = (data && data[0]) || [], col = {};
+  for(var c=0; c<head.length; c++){
+    var h = head[c] ? String(head[c]).toLowerCase().trim() : "";
+    if(h) col[h] = c;
+  }
+  var ciclos = [];
+  if(col["inicio_ciclo"] != null && col["fin_ciclo"] != null && col["mes_productivo"] != null){
+    for(var r=1; r<data.length; r++){
+      var row = data[r]; if(!row) continue;
+      var ini = fechaMaestro(row[col["inicio_ciclo"]]), fin = fechaMaestro(row[col["fin_ciclo"]]);
+      var mes = row[col["mes_productivo"]];
+      if(!ini || !fin || !mes) continue;
+      ciclos.push({mes:String(mes).trim(), ini:ini, fin:fin, mesNum:fin.getUTCMonth()+1, anio:fin.getUTCFullYear()});
+    }
+    ciclos.sort(function(a,b){ return a.ini - b.ini; });
+  }
+  var cfg = {mesesAtras:3, actualizadoPor:"", fechaAct:null};
+  if(col["meses_atras"] != null && data[1]){
+    var n = parseInt(data[1][col["meses_atras"]], 10); if(n > 0 && n < 13) cfg.mesesAtras = n;
+  }
+  if(col["actualizado_por"] != null && data[1] && data[1][col["actualizado_por"]]) cfg.actualizadoPor = String(data[1][col["actualizado_por"]]).trim();
+  if(col["fecha_actualizacion"] != null && data[1]) cfg.fechaAct = fechaMaestro(data[1][col["fecha_actualizacion"]]);
+  return {ciclos:ciclos, cfg:cfg};
+}
+
+// Ciclo que corresponde a hoy. Sin tabla en el Maestro: regla 26->25 (dic: 26-nov a 31-dic; ene: 1 a 25).
+function cicloDeFecha(hoy){
+  var lista = CICLOS_MAESTRO;
+  for(var i=0; i<lista.length; i++){
+    if(hoy >= lista[i].ini && hoy <= lista[i].fin) return {ciclo:lista[i], idx:i, vencido:false};
+  }
+  var y = hoy.getUTCFullYear(), m = hoy.getUTCMonth()+1, d = hoy.getUTCDate(), mp, ini, fin;
+  if(m === 1 && d <= 25){ mp = 1; ini = new Date(Date.UTC(y,0,1)); fin = new Date(Date.UTC(y,0,25)); }
+  else if((m === 11 && d >= 26) || m === 12){ mp = 12; ini = new Date(Date.UTC(y,10,26)); fin = new Date(Date.UTC(y,11,31)); }
+  else if(d >= 26){ mp = m + 1; ini = new Date(Date.UTC(y, m-1, 26)); fin = new Date(Date.UTC(y, m, 25)); }
+  else { mp = m; ini = new Date(Date.UTC(m === 1 ? y-1 : y, m === 1 ? 11 : m-2, 26)); fin = new Date(Date.UTC(y, m-1, 25)); }
+  return {ciclo:{mes:MESES_EN[mp-1], mesNum:mp, anio:fin.getUTCFullYear(), ini:ini, fin:fin}, idx:-1, vencido:lista.length > 0};
+}
+
+// Meses (nombres en ingles, como en tblPlan) de las labores a extraer: el vigente y los anteriores.
 function getUltimos3Meses(){
-  return ['October','September','August'];
+  var info = cicloDeFecha(hoyFecha()), n = CONFIG_MAESTRO.mesesAtras || 3, out = [];
+  var mn = info.ciclo.mesNum;
+  for(var k=0; k<n; k++){ out.push(MESES_EN[((mn-1-k)%12+12)%12]); }
+  return out;
+}
+
+// Semanas dom-sab. Parcial inicial de 4 dias o menos (26 mie-sab) se une a la siguiente (semana larga);
+// parcial final de 4 dias o menos (dom-mie) se une a la anterior; de 5-6 dias queda como semana corta.
+function semanasDelCiclo(ini, fin){
+  var bl = [], s = ini;
+  while(s <= fin){
+    var dia = s.getUTCDay();                       // 0 = domingo
+    var e = sumaDias(s, (6 - dia + 7) % 7);        // sabado
+    if(e > fin) e = fin;
+    bl.push([s, e]); s = sumaDias(e, 1);
+  }
+  if(bl.length > 1){
+    var l0 = Math.round((bl[0][1]-bl[0][0])/86400000)+1;
+    if(l0 <= 4 && bl[0][0].getUTCDay() !== 0){ bl[1][0] = bl[0][0]; bl.shift(); }
+  }
+  if(bl.length > 1){
+    var last = bl[bl.length-1], ll = Math.round((last[1]-last[0])/86400000)+1;
+    if(ll <= 4 && last[1].getUTCDay() !== 6){ bl[bl.length-2][1] = last[1]; bl.pop(); }
+  }
+  return bl;
+}
+
+function poblarSemanas(){
+  var sel = document.getElementById("f-semana");
+  if(!sel) return;
+  var actual = sel.value;
+  var info = cicloDeFecha(hoyFecha()), semanas = semanasDelCiclo(info.ciclo.ini, info.ciclo.fin);
+  sel.innerHTML = '<option value="">-- Semana --</option>';
+  semanas.forEach(function(b, i){
+    var o = document.createElement("option");
+    o.value = String(i+1);
+    o.textContent = "Semana " + (i+1) + " (" + fmtCorta(b[0]) + " - " + fmtCorta(b[1]) + ")";
+    sel.appendChild(o);
+  });
+  if(actual && sel.querySelector('option[value="' + actual + '"]')) sel.value = actual;
+  var inf = document.getElementById("cicloInfo");
+  if(inf){
+    var txt = "Ciclo " + info.ciclo.mes + ": " + fmtFecha(info.ciclo.ini) + " a " + fmtFecha(info.ciclo.fin);
+    if(CONFIG_MAESTRO.actualizadoPor || CONFIG_MAESTRO.fechaAct){
+      txt += " · Maestro actualizado" + (CONFIG_MAESTRO.actualizadoPor ? " por " + CONFIG_MAESTRO.actualizadoPor : "") + (CONFIG_MAESTRO.fechaAct ? " el " + fmtFecha(CONFIG_MAESTRO.fechaAct) : "");
+    }
+    inf.textContent = txt;
+    inf.style.color = "";
+    if(info.vencido){
+      inf.textContent += " · ⚠ El Maestro no trae el ciclo de hoy: importe el Maestro actualizado";
+      inf.style.color = "var(--c-err, #c0392b)";
+    }
+  }
 }
 
 function getLaboresByContratista(){
@@ -556,6 +675,7 @@ function updateCunetaVisibility(){
 
 // Escuchar cambio de labor para actualizar cuneta
 document.addEventListener("DOMContentLoaded", function(){
+  try{ poblarSemanas(); }catch(e){}
   var laborInp = document.getElementById("f-labor");
   if(laborInp) laborInp.addEventListener("change", updateCunetaVisibility);
   // También al seleccionar del dropdown
@@ -2488,7 +2608,11 @@ function procesarMaestroGitHub(data, mostrarAviso){
   var leidos = leerContratistasMaestro(data);
   if(leidos.nombres.length){ CONTRATISTAS_APP = leidos.nombres; }
   var CONTRATISTAS = CONTRATISTAS_APP.slice();
-  var MESES_OBJ = ["October","September","August"];
+  var cic = leerCiclosMaestro(data);
+  if(cic.ciclos.length){ CICLOS_MAESTRO = cic.ciclos; }
+  CONFIG_MAESTRO = cic.cfg;
+  var MESES_OBJ = getUltimos3Meses();
+  poblarSemanas();
 
   var mapa = {};
   var mapaSeccion  = {};
